@@ -52,7 +52,12 @@ class GoalCard extends StatelessWidget {
               ],
             ),
             const SizedBox(height: AppSpacing.sm),
-            Text(goal.title, style: AppTypography.titleMedium(onSurface)),
+            Text(
+              goal.title,
+              style: AppTypography.titleMedium(onSurface),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
             const SizedBox(height: AppSpacing.sm),
             ClipRRect(
               borderRadius: BorderRadius.circular(AppRadius.full),
@@ -67,9 +72,13 @@ class GoalCard extends StatelessWidget {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  '${goal.currentValue.toStringAsFixed(goal.currentValue % 1 == 0 ? 0 : 1)}/${goal.targetValue.toStringAsFixed(goal.targetValue % 1 == 0 ? 0 : 1)}${goal.unit != null ? ' ${goal.unit}' : ''} · ${(progress * 100).toStringAsFixed(0)}%',
-                  style: AppTypography.bodySmall(muted),
+                Expanded(
+                  child: Text(
+                    '${goal.currentValue.toStringAsFixed(goal.currentValue % 1 == 0 ? 0 : 1)}/${goal.targetValue.toStringAsFixed(goal.targetValue % 1 == 0 ? 0 : 1)}${goal.unit != null ? ' ${goal.unit}' : ''} · ${(progress * 100).toStringAsFixed(0)}%',
+                    style: AppTypography.bodySmall(muted),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ),
                 if (goal.milestones.isNotEmpty) _MilestoneDots(milestones: goal.milestones),
               ],
@@ -94,6 +103,9 @@ class _MilestoneDots extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final secondary = isDark ? AppColors.darkSecondary : AppColors.lightSecondary;
+    final muted = isDark ? AppColors.darkOnSurfaceMuted : AppColors.lightOnSurfaceMuted;
     final shown = milestones.take(5).toList();
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -106,7 +118,7 @@ class _MilestoneDots extends StatelessWidget {
             height: 6,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: complete ? AppColors.darkSecondary : AppColors.darkOnSurfaceMuted.withOpacity(0.3),
+              color: complete ? secondary : muted.withOpacity(0.3),
             ),
           ),
         );

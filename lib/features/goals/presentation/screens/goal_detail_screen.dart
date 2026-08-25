@@ -113,7 +113,12 @@ class _GoalDetailBody extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(goal.title, style: AppTypography.titleLarge(onBg)),
+                    Text(
+                      goal.title,
+                      style: AppTypography.titleLarge(onBg),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     Text('${meta.emoji} ${meta.label}', style: AppTypography.bodySmall(muted)),
                   ],
                 ),
@@ -233,6 +238,11 @@ class _GoalDetailBody extends ConsumerWidget {
   }
 }
 
+String _formatDate(DateTime date) {
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return '${months[date.month - 1]} ${date.day}';
+}
+
 class _MilestoneTile extends ConsumerWidget {
   final String goalId;
   final MilestoneModel milestone;
@@ -267,11 +277,21 @@ class _MilestoneTile extends ConsumerWidget {
           ),
           const SizedBox(width: AppSpacing.md),
           Expanded(
-            child: Text(
-              milestone.title,
-              style: AppTypography.bodyMedium(onSurface).copyWith(
-                decoration: milestone.isComplete ? TextDecoration.lineThrough : null,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  milestone.title,
+                  style: AppTypography.bodyMedium(onSurface).copyWith(
+                    decoration: milestone.isComplete ? TextDecoration.lineThrough : null,
+                  ),
+                ),
+                if (milestone.isComplete && milestone.completedAt != null)
+                  Text(
+                    'Completed ${_formatDate(milestone.completedAt!)}',
+                    style: AppTypography.labelSmall(muted),
+                  ),
+              ],
             ),
           ),
           Text('${milestone.targetValue}', style: AppTypography.bodySmall(muted)),

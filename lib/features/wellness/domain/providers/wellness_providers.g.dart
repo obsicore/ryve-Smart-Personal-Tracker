@@ -130,7 +130,7 @@ final recentBreathingSessionsProvider =
 // ignore: unused_element
 typedef RecentBreathingSessionsRef
     = AutoDisposeStreamProviderRef<List<BreathingSessionModel>>;
-String _$wellnessNotifierHash() => r'0a0e0f831beea9e3f90bfa643b6a010ec9532449';
+String _$wellnessNotifierHash() => r'83be9e994adc46ab477c81f9f4a8df8a68adddf7';
 
 /// See also [WellnessNotifier].
 @ProviderFor(WellnessNotifier)

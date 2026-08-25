@@ -302,7 +302,7 @@ class _HabitLogsProviderElement
   String get habitId => (origin as HabitLogsProvider).habitId;
 }
 
-String _$habitNotifierHash() => r'e21c892a1e6f7ea9d4b941eb1c38a0d822276583';
+String _$habitNotifierHash() => r'284f8a5f4567b2fdb0710e15c43d6a958b3e8858';
 
 /// See also [HabitNotifier].
 @ProviderFor(HabitNotifier)

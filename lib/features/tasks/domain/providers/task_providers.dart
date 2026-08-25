@@ -1,9 +1,11 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/xp_service.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/tasks/data/models/task_model.dart';
 import 'package:hybrid_tracker/features/tasks/data/repositories/task_repository.dart';
+import 'package:hybrid_tracker/features/goals/domain/providers/goals_providers.dart' show goalsRepositoryProvider;
 
 part 'task_providers.g.dart';
 
@@ -85,8 +87,11 @@ class TaskNotifier extends _$TaskNotifier {
   Future<void> updateTask(TaskModel task) =>
       ref.read(taskRepositoryProvider).updateTask(task);
 
-  Future<void> completeTask(String id) =>
-      ref.read(taskRepositoryProvider).completeTask(id);
+  Future<void> completeTask(String id) async {
+    await ref.read(taskRepositoryProvider).completeTask(id);
+    await ref.read(xpServiceProvider).award(XPEvent.taskComplete, entityId: id);
+    await ref.read(goalsRepositoryProvider).incrementLinkedGoalsForTask(id);
+  }
 
   Future<void> deleteTask(String id) =>
       ref.read(taskRepositoryProvider).deleteTask(id);

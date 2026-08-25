@@ -194,6 +194,7 @@ class TaskRepositoryImpl implements TaskRepository {
   Future<void> deleteTask(String id) async {
     await (_db.delete(_db.subtasks)..where((s) => s.taskId.equals(id))).go();
     await (_db.delete(_db.taskTags)..where((tt) => tt.taskId.equals(id))).go();
+    await (_db.delete(_db.goalTaskLinks)..where((l) => l.taskId.equals(id))).go();
     await (_db.delete(_db.tasks)..where((t) => t.id.equals(id))).go();
   }
 

@@ -12,10 +12,13 @@ import 'package:hybrid_tracker/core/theme/app_typography.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/dashboard/data/models/dashboard_models.dart';
 import 'package:hybrid_tracker/features/dashboard/domain/providers/dashboard_providers.dart';
-import 'package:hybrid_tracker/features/dashboard/presentation/widgets/ai_suggestion_banner_widget.dart';
+import 'package:hybrid_tracker/features/dashboard/presentation/widgets/ai_plan_card.dart';
+import 'package:hybrid_tracker/features/dashboard/presentation/widgets/challenge_micro_card.dart';
+import 'package:hybrid_tracker/features/dashboard/presentation/widgets/coaching_insights_widget.dart';
 import 'package:hybrid_tracker/features/dashboard/presentation/widgets/mood_water_widget.dart';
 import 'package:hybrid_tracker/features/dashboard/presentation/widgets/notification_bell_widget.dart';
 import 'package:hybrid_tracker/features/dashboard/presentation/widgets/streak_card_widget.dart';
+import 'package:hybrid_tracker/shared/widgets/ryve_bottom_nav.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   const HomeScreen({super.key});
@@ -153,13 +156,35 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
                     const SizedBox(height: AppSpacing.xxl),
 
-                    // ── AI Suggestion ────────────────────────────────────────
+                    // ── Today's AI Plan ──────────────────────────────────────
+                    _AnimatedSection(
+                      delay: disableAnims
+                          ? Duration.zero
+                          : const Duration(milliseconds: 400),
+                      disableAnims: disableAnims,
+                      child: const AiPlanCard(),
+                    ),
+
+                    const SizedBox(height: AppSpacing.md),
+
+                    // ── Top Active Challenge ─────────────────────────────────
+                    _AnimatedSection(
+                      delay: disableAnims
+                          ? Duration.zero
+                          : const Duration(milliseconds: 420),
+                      disableAnims: disableAnims,
+                      child: const ChallengeMicroCard(),
+                    ),
+
+                    const SizedBox(height: AppSpacing.xxl),
+
+                    // ── Coaching Insights ────────────────────────────────────
                     _AnimatedSection(
                       delay: disableAnims
                           ? Duration.zero
                           : const Duration(milliseconds: 440),
                       disableAnims: disableAnims,
-                      child: const AiSuggestionBannerWidget(),
+                      child: const CoachingInsightsWidget(),
                     ),
 
                     const SizedBox(height: AppSpacing.x4l),
@@ -170,8 +195,26 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         ],
       ),
-      bottomNavigationBar: _RyveBottomNav(currentIndex: 0),
+      bottomNavigationBar: RyveBottomNav(
+        currentIndex: 0,
+        onTap: _onNavTap,
+      ),
     );
+  }
+
+  void _onNavTap(int index) {
+    switch (index) {
+      case 0:
+        context.go(Routes.home);
+      case 1:
+        context.go(Routes.tasks);
+      case 2:
+        context.go(Routes.habits);
+      case 3:
+        context.go(Routes.focus);
+      case 4:
+        context.go(Routes.profile);
+    }
   }
 
   Widget _buildHeader(
@@ -332,36 +375,48 @@ class _HabitPreviewChip extends StatelessWidget {
       ),
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Stack(
-            alignment: Alignment.bottomRight,
-            children: [
-              Text(habit.emoji, style: const TextStyle(fontSize: 28)),
-              if (habit.completed)
-                Container(
-                  width: 14,
-                  height: 14,
-                  decoration: BoxDecoration(
-                    color: secondary,
-                    shape: BoxShape.circle,
-                  ),
-                  child: const Icon(
-                    Icons.check,
-                    color: Colors.white,
-                    size: 9,
-                  ),
-                ),
-            ],
+          SizedBox(
+            height: 32,
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Stack(
+                alignment: Alignment.bottomRight,
+                children: [
+                  Text(habit.emoji, style: const TextStyle(fontSize: 28)),
+                  if (habit.completed)
+                    Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: secondary,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.check,
+                        color: Colors.white,
+                        size: 9,
+                      ),
+                    ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: AppSpacing.xs),
-          Text(
-            habit.name,
-            style: AppTypography.bodySmall(
-              habit.completed ? secondary : onSurface,
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                habit.name,
+                style: AppTypography.bodySmall(
+                  habit.completed ? secondary : onSurface,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+              ),
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
           ),
         ],
       ),
@@ -493,66 +548,6 @@ class _TasksPreviewSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _SkeletonCard(height: 140);
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Bottom nav bar
-// ---------------------------------------------------------------------------
-
-class _RyveBottomNav extends StatelessWidget {
-  final int currentIndex;
-
-  const _RyveBottomNav({required this.currentIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
-    final muted = isDark ? AppColors.darkOnSurfaceMuted : AppColors.lightOnSurfaceMuted;
-
-    return NavigationBar(
-      selectedIndex: currentIndex,
-      backgroundColor: surface,
-      indicatorColor: primary.withOpacity(0.15),
-      onDestinationSelected: (i) {
-        switch (i) {
-          case 0: context.go(Routes.home);
-          case 1: context.go(Routes.tasks);
-          case 2: context.go(Routes.habits);
-          case 3: context.go(Routes.focus);
-          case 4: context.go(Routes.profile);
-        }
-      },
-      destinations: [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined, color: muted),
-          selectedIcon: Icon(Icons.home_rounded, color: primary),
-          label: 'Home',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.check_circle_outline_rounded, color: muted),
-          selectedIcon: Icon(Icons.check_circle_rounded, color: primary),
-          label: 'Tasks',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.eco_outlined, color: muted),
-          selectedIcon: Icon(Icons.eco_rounded, color: primary),
-          label: 'Habits',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.timer_outlined, color: muted),
-          selectedIcon: Icon(Icons.timer_rounded, color: primary),
-          label: 'Focus',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline_rounded, color: muted),
-          selectedIcon: Icon(Icons.person_rounded, color: primary),
-          label: 'Profile',
-        ),
-      ],
-    );
   }
 }
 

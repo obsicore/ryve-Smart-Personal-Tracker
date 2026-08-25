@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/xp_service.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/focus/data/models/focus_session_model.dart';
 import 'package:hybrid_tracker/features/focus/data/repositories/focus_repository.dart';
@@ -252,6 +253,13 @@ class FocusTimerNotifier extends _$FocusTimerNotifier {
       endedAt: end,
     );
     ref.read(focusRepositoryProvider).saveSession(session);
+    if (wasCompleted) {
+      ref.read(xpServiceProvider).award(
+            XPEvent.focusSessionComplete,
+            entityId: session.id,
+            metricValue: durationMinutes,
+          );
+    }
     _sessionStart = null;
   }
 

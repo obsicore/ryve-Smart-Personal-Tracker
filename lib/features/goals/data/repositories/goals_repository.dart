@@ -20,6 +20,7 @@ abstract class GoalsRepository {
   Future<void> linkHabit(String goalId, String habitId);
   Future<void> linkTask(String goalId, String taskId);
   Future<void> incrementLinkedGoals(String habitId, {double amount = 1});
+  Future<void> incrementLinkedGoalsForTask(String taskId, {double amount = 1});
 
   Future<LifeAreaScoreModel?> getLatestLifeAreaScore(String userId);
   Future<void> saveLifeAreaScore(LifeAreaScoreModel score);
@@ -258,6 +259,19 @@ class GoalsRepositoryImpl implements GoalsRepository {
   Future<void> incrementLinkedGoals(String habitId, {double amount = 1}) async {
     final links = await (_db.select(_db.goalHabitLinks)
           ..where((l) => l.habitId.equals(habitId)))
+        .get();
+    for (final link in links) {
+      final goal = await (_db.select(_db.goals)..where((g) => g.id.equals(link.goalId)))
+          .getSingleOrNull();
+      if (goal == null || goal.status != 'active') continue;
+      await updateProgress(goal.id, goal.currentValue + amount);
+    }
+  }
+
+  @override
+  Future<void> incrementLinkedGoalsForTask(String taskId, {double amount = 1}) async {
+    final links = await (_db.select(_db.goalTaskLinks)
+          ..where((l) => l.taskId.equals(taskId)))
         .get();
     for (final link in links) {
       final goal = await (_db.select(_db.goals)..where((g) => g.id.equals(link.goalId)))

@@ -1,17 +1,13 @@
-import 'dart:convert';
-
-import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/core/database/local/app_database.dart';
+import 'package:hybrid_tracker/core/utils/password_hash.dart';
 import 'package:hybrid_tracker/features/auth/data/models/app_user_model.dart';
 
 const _uuid = Uuid();
 const _sessionKey = 'current_user_id';
-
-String hashPassword(String password) => sha256.convert(utf8.encode(password)).toString();
 
 class AuthRepository {
   AuthRepository(this._db);
@@ -45,11 +41,13 @@ class AuthRepository {
     }
 
     final id = _uuid.v4();
+    final salt = generateSalt();
     await _db.into(_db.users).insert(
           UsersCompanion.insert(
             id: id,
             email: normalizedEmail,
-            passwordHash: hashPassword(password),
+            passwordHash: hashSecret(password, salt),
+            passwordSalt: Value(salt),
             displayName: Value(displayName.trim()),
           ),
         );
@@ -64,7 +62,7 @@ class AuthRepository {
     final normalizedEmail = email.trim().toLowerCase();
     final row = await (_db.select(_db.users)..where((u) => u.email.equals(normalizedEmail)))
         .getSingleOrNull();
-    if (row == null || row.passwordHash != hashPassword(password)) {
+    if (row == null || !verifySecret(password, row.passwordSalt, row.passwordHash)) {
       throw Exception('Incorrect email or password.');
     }
 

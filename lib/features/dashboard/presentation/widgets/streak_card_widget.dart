@@ -129,7 +129,7 @@ class _StreakProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: progress,
             backgroundColor: AppColors.darkPrimary.withOpacity(0.2),
-            valueColor: const AlwaysStoppedAnimation<Color>(
+            valueColor: AlwaysStoppedAnimation<Color>(
               AppColors.darkPrimary,
             ),
             minHeight: 6,

@@ -1,7 +1,10 @@
 import 'package:drift/drift.dart';
+import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/core/database/local/app_database.dart';
 import 'package:hybrid_tracker/features/habits/data/models/habit_model.dart';
+
+const _uuid = Uuid();
 
 // ---------------------------------------------------------------------------
 // Abstract interface
@@ -18,6 +21,11 @@ abstract class HabitRepository {
   Future<void> deleteHabit(String id);
   Future<void> logHabit(HabitLogModel log);
   Future<List<HabitLogModel>> getLogsForHabit(String habitId, {int days = 30});
+
+  /// Inserts a synthetic zero-value "freeze" log for yesterday so the streak
+  /// calculation (which reads presence of a log per calendar day) treats the
+  /// missed day as covered. Used by the streak-freeze XP mechanic.
+  Future<void> insertFreezeLog(String habitId, String userId);
 }
 
 // ---------------------------------------------------------------------------
@@ -171,6 +179,25 @@ class HabitRepositoryImpl implements HabitRepository {
             moodAfter: Value(log.moodAfter),
             notes: Value(log.notes),
             syncStatus: const Value(0),
+          ),
+        );
+  }
+
+  // -------------------------------------------------------------------------
+  // insertFreezeLog
+  // -------------------------------------------------------------------------
+  @override
+  Future<void> insertFreezeLog(String habitId, String userId) async {
+    final yesterday = DateTime.now().subtract(const Duration(days: 1));
+    final day = DateTime(yesterday.year, yesterday.month, yesterday.day);
+    await _db.into(_db.habitLogs).insert(
+          HabitLogsCompanion.insert(
+            id: _uuid.v4(),
+            habitId: habitId,
+            userId: userId,
+            logDate: day,
+            value: const Value(0),
+            notes: const Value('__freeze__'),
           ),
         );
   }

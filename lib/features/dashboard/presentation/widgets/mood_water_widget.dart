@@ -7,7 +7,9 @@ import 'package:hybrid_tracker/core/theme/app_colors.dart';
 import 'package:hybrid_tracker/core/theme/app_spacing.dart';
 import 'package:hybrid_tracker/core/theme/app_animations.dart';
 import 'package:hybrid_tracker/core/theme/app_typography.dart';
+import 'package:hybrid_tracker/core/utils/wellness_constants.dart';
 import 'package:hybrid_tracker/features/wellness/domain/providers/wellness_providers.dart';
+import 'package:hybrid_tracker/shared/widgets/xp_float_overlay.dart';
 
 class MoodWaterWidget extends ConsumerWidget {
   const MoodWaterWidget({super.key});
@@ -91,7 +93,10 @@ class _MoodCard extends ConsumerWidget {
                   : (neighborDist == 1 ? 0.9 : 1.0);
 
               return GestureDetector(
-                onTap: () => ref.read(wellnessNotifierProvider.notifier).logMood(moodScore: mood.rating),
+                onTap: () {
+                  ref.read(wellnessNotifierProvider.notifier).logMood(moodScore: mood.rating);
+                  XpFloatOverlay.show(context, 2);
+                },
                 child: AnimatedScale(
                   scale: scale,
                   duration: disableAnims
@@ -104,7 +109,7 @@ class _MoodCard extends ConsumerWidget {
                       fontSize: 22,
                       shadows: isSelected
                           ? [
-                              const Shadow(
+                              Shadow(
                                 color: AppColors.darkPrimary,
                                 blurRadius: 8,
                               ),
@@ -136,7 +141,7 @@ class _MoodCard extends ConsumerWidget {
 // ---------------------------------------------------------------------------
 
 class _WaterCard extends ConsumerWidget {
-  static const _goalMl = 2500;
+  static const _goalMl = defaultWaterGoalMl;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -185,13 +190,19 @@ class _WaterCard extends ConsumerWidget {
             children: [
               _QuickAddButton(
                 label: '+150',
-                onTap: () => ref.read(wellnessNotifierProvider.notifier).logWater(150),
+                onTap: () {
+                  ref.read(wellnessNotifierProvider.notifier).logWater(150);
+                  XpFloatOverlay.show(context, 2);
+                },
                 color: secondary,
               ),
               const SizedBox(width: AppSpacing.xs),
               _QuickAddButton(
                 label: '+250',
-                onTap: () => ref.read(wellnessNotifierProvider.notifier).logWater(250),
+                onTap: () {
+                  ref.read(wellnessNotifierProvider.notifier).logWater(250);
+                  XpFloatOverlay.show(context, 2);
+                },
                 color: secondary,
               ),
             ],

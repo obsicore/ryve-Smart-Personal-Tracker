@@ -73,7 +73,12 @@ class HabitDetailScreen extends ConsumerWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(habit.name, style: AppTypography.headlineLarge(onBg)),
+                          Text(
+                            habit.name,
+                            style: AppTypography.headlineLarge(onBg),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                           Text(habit.category, style: AppTypography.bodySmall(muted)),
                         ],
                       ),
@@ -111,6 +116,28 @@ class HabitDetailScreen extends ConsumerWidget {
                     ),
                   ],
                 ).animate(delay: 60.ms).fadeIn(duration: 250.ms).slideY(begin: 0.06, end: 0),
+
+                if (!habit.completedToday && habit.currentStreak > 0) ...[
+                  const SizedBox(height: AppSpacing.md),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final protectedStreak =
+                          await ref.read(habitNotifierProvider.notifier).protectStreak(habitId);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            protectedStreak
+                                ? 'Streak protected with a freeze token!'
+                                : 'Not enough XP for a freeze token (need 100).',
+                          ),
+                        ),
+                      );
+                    },
+                    icon: Icon(Icons.ac_unit_rounded, color: secondary),
+                    label: Text('Protect Streak (100 XP)', style: AppTypography.labelMedium(secondary)),
+                  ),
+                ],
 
                 const SizedBox(height: AppSpacing.xxl),
 
@@ -209,10 +236,18 @@ class _StatCard extends StatelessWidget {
         ),
         child: Column(
           children: [
-            Text(value, style: AppTypography.displayMedium(color)),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(value, style: AppTypography.displayMedium(color), maxLines: 1),
+            ),
             Text(unit, style: AppTypography.bodySmall(muted)),
             const SizedBox(height: AppSpacing.xs),
-            Text(label, style: AppTypography.labelSmall(onSurface)),
+            Text(
+              label,
+              style: AppTypography.labelSmall(onSurface),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ],
         ),
       ),

@@ -479,6 +479,7 @@ class _DayCellState extends State<_DayCell>
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: widget.events
+                    .take(4)
                     .map(
                       (e) => Container(
                         width: 5,

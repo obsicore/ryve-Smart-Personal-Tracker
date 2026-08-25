@@ -7,11 +7,12 @@ import 'package:hybrid_tracker/core/theme/app_animations.dart';
 import 'package:hybrid_tracker/core/theme/app_colors.dart';
 import 'package:hybrid_tracker/core/theme/app_spacing.dart';
 import 'package:hybrid_tracker/core/theme/app_typography.dart';
+import 'package:hybrid_tracker/core/utils/wellness_constants.dart';
 import 'package:hybrid_tracker/features/wellness/data/models/water_log_model.dart';
 import 'package:hybrid_tracker/features/wellness/domain/providers/wellness_providers.dart';
 
 class WaterTrackerWidget extends ConsumerWidget {
-  const WaterTrackerWidget({super.key, this.goalMl = 2500});
+  const WaterTrackerWidget({super.key, this.goalMl = defaultWaterGoalMl});
 
   final int goalMl;
 

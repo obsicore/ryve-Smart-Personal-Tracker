@@ -91,9 +91,13 @@ class AlarmCardWidget extends ConsumerWidget {
                             '  ·  ',
                             style: AppTypography.bodySmall(muted),
                           ),
-                          Text(
-                            alarm.label,
-                            style: AppTypography.bodySmall(muted),
+                          Flexible(
+                            child: Text(
+                              alarm.label,
+                              style: AppTypography.bodySmall(muted),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ],

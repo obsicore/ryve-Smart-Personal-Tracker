@@ -6,7 +6,7 @@ part of 'profile_providers.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$userProfileHash() => r'a2529446b3a9eceb53b49f4544390912f39a99cc';
+String _$userProfileHash() => r'88101d95ad83680b14656bdb87eca3ee2e34127d';
 
 /// See also [userProfile].
 @ProviderFor(userProfile)
@@ -22,7 +22,7 @@ final userProfileProvider = AutoDisposeFutureProvider<ProfileModel>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef UserProfileRef = AutoDisposeFutureProviderRef<ProfileModel>;
-String _$userBadgesHash() => r'48e91ecb6249811489e5d50c4f85c0bfc7d0276a';
+String _$userBadgesHash() => r'f288d6b8a6d3f7b422cdee07533fc6efda0965c6';
 
 /// See also [userBadges].
 @ProviderFor(userBadges)

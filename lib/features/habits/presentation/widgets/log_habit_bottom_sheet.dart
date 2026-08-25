@@ -79,7 +79,8 @@ class _LogHabitBottomSheetState extends ConsumerState<LogHabitBottomSheet> {
         AppSpacing.xxl,
         AppSpacing.xxl + MediaQuery.of(context).viewInsets.bottom,
       ),
-      child: Column(
+      child: SingleChildScrollView(
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -116,6 +117,8 @@ class _LogHabitBottomSheetState extends ConsumerState<LogHabitBottomSheet> {
                     ),
                     Text(
                       widget.habit.name,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: cs.onSurface.withOpacity(0.6),
                       ),
@@ -168,6 +171,7 @@ class _LogHabitBottomSheetState extends ConsumerState<LogHabitBottomSheet> {
             ),
           ),
         ],
+        ),
       ),
     );
 
@@ -325,7 +329,6 @@ class _MoodSelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(_moodEmoji.length, (i) {
         final isSelected = selected == i;
 
@@ -334,29 +337,35 @@ class _MoodSelector extends StatelessWidget {
             HapticFeedback.selectionClick();
             onSelect(i);
           },
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 52,
-            height: 52,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected
-                  ? (Theme.of(context).brightness == Brightness.dark
-                      ? AppColors.darkSurfaceBright
-                      : AppColors.lightSurfaceBright)
-                  : Colors.transparent,
-              border: isSelected
-                  ? Border.all(
-                      color: AppColors.darkPrimary,
-                      width: 2,
-                    )
-                  : null,
-            ),
-            alignment: Alignment.center,
-            child: Text(
-              _moodEmoji[i],
-              style: TextStyle(
-                fontSize: isSelected ? 26 : 22,
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 52, maxHeight: 52),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: isSelected
+                      ? (Theme.of(context).brightness == Brightness.dark
+                          ? AppColors.darkSurfaceBright
+                          : AppColors.lightSurfaceBright)
+                      : Colors.transparent,
+                  border: isSelected
+                      ? Border.all(
+                          color: AppColors.darkPrimary,
+                          width: 2,
+                        )
+                      : null,
+                ),
+                alignment: Alignment.center,
+                child: FittedBox(
+                  child: Text(
+                    _moodEmoji[i],
+                    style: TextStyle(
+                      fontSize: isSelected ? 26 : 22,
+                    ),
+                  ),
+                ),
               ),
             ),
           ),
@@ -373,7 +382,7 @@ class _MoodSelector extends StatelessWidget {
               );
         }
 
-        return emoji;
+        return Expanded(child: Center(child: emoji));
       }),
     );
   }

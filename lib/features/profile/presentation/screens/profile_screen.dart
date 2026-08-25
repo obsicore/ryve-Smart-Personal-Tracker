@@ -8,10 +8,16 @@ import 'package:hybrid_tracker/core/theme/app_colors.dart';
 import 'package:hybrid_tracker/core/theme/app_spacing.dart';
 import 'package:hybrid_tracker/core/theme/theme_provider.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
+import 'package:hybrid_tracker/features/auth/domain/providers/pin_providers.dart';
+import 'package:hybrid_tracker/features/auth/presentation/widgets/pin_setup_sheet.dart';
 import 'package:hybrid_tracker/features/profile/data/models/profile_model.dart';
 import 'package:hybrid_tracker/features/profile/domain/providers/profile_providers.dart';
+import 'package:hybrid_tracker/features/gamification/presentation/widgets/badge_detail_sheet.dart';
 import 'package:hybrid_tracker/features/profile/presentation/widgets/badge_card.dart';
 import 'package:hybrid_tracker/features/profile/presentation/widgets/streak_widget.dart';
+import 'package:hybrid_tracker/core/services/sync_service.dart';
+import 'package:hybrid_tracker/core/services/backup_service.dart';
+import 'package:hybrid_tracker/shared/widgets/ryve_bottom_nav.dart';
 
 class ProfileScreen extends ConsumerStatefulWidget {
   const ProfileScreen({super.key});
@@ -54,6 +60,47 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     context.go(Routes.login);
   }
 
+  Future<void> _exportData(BuildContext context, WidgetRef ref) async {
+    final userId = ref.read(authStateProvider).value?.uid ?? '';
+    if (userId.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.showSnackBar(const SnackBar(content: Text('Preparing export…')));
+    try {
+      final file = await ref.read(backupServiceProvider).exportAllData(userId);
+      await ref.read(backupServiceProvider).shareBackup(file);
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Export failed: $e')));
+    }
+  }
+
+  Future<void> _restoreData(BuildContext context, WidgetRef ref) async {
+    final userId = ref.read(authStateProvider).value?.uid ?? '';
+    if (userId.isEmpty) return;
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final result = await ref.read(backupServiceProvider).pickAndRestore(userId);
+      if (!context.mounted) return;
+      messenger.showSnackBar(SnackBar(
+        content: Text(result == null ? 'Restore cancelled' : 'Restored ${result.tablesRestored} tables'),
+      ));
+    } catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text('Restore failed: $e')));
+    }
+  }
+
+  void _onNavTap(int index) {
+    switch (index) {
+      case 0:
+        context.go(Routes.home);
+      case 1:
+        context.go(Routes.tasks);
+      case 2:
+        context.go(Routes.habits);
+      case 3:
+        context.go(Routes.focus);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -81,6 +128,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
 
     return Scaffold(
       backgroundColor: bgColor,
+      bottomNavigationBar: RyveBottomNav(
+        currentIndex: 4,
+        onTap: _onNavTap,
+      ),
       body: profileAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (err, _) => Center(
@@ -335,9 +386,14 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                 fontWeight: FontWeight.w600,
               ),
             ),
-            Text(
-              '${profile.xpTotal} / ${profile.xpToNextLevel} XP',
-              style: TextStyle(color: mutedColor, fontSize: 13),
+            Flexible(
+              child: Text(
+                '${profile.xpTotal} / ${profile.xpToNextLevel} XP',
+                style: TextStyle(color: mutedColor, fontSize: 13),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.right,
+              ),
             ),
           ],
         ),
@@ -476,6 +532,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               animationDelay: disableAnimations
                   ? Duration.zero
                   : Duration(milliseconds: i * 60),
+              onTap: () => showBadgeDetailSheet(context, badges[i]),
             ),
           ),
         ),
@@ -495,8 +552,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     required Color goldColor,
     required ThemeMode themeMode,
   }) {
-    final themeNotifier = ref.read(themeModeProvider.notifier);
-
     String themeModeLabel(ThemeMode mode) {
       switch (mode) {
         case ThemeMode.system:
@@ -505,17 +560,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           return 'Light';
         case ThemeMode.dark:
           return 'Dark';
-      }
-    }
-
-    ThemeMode nextMode(ThemeMode mode) {
-      switch (mode) {
-        case ThemeMode.system:
-          return ThemeMode.light;
-        case ThemeMode.light:
-          return ThemeMode.dark;
-        case ThemeMode.dark:
-          return ThemeMode.system;
       }
     }
 
@@ -580,6 +624,24 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
         ),
         const SizedBox(height: AppSpacing.md),
         tile(
+          icon: Icons.auto_awesome_outlined,
+          title: 'AI Day Planner',
+          subtitle: 'AI-generated schedule & coaching tips',
+          onTap: () => context.push(Routes.aiPlanner),
+        ),
+        tile(
+          icon: Icons.menu_book_outlined,
+          title: 'Journal',
+          subtitle: 'Entries, gratitude & reflections',
+          onTap: () => context.push(Routes.journal),
+        ),
+        tile(
+          icon: Icons.emoji_events_outlined,
+          title: 'Challenges',
+          subtitle: 'Track active and available challenges',
+          onTap: () => context.push(Routes.challenges),
+        ),
+        tile(
           icon: Icons.palette_outlined,
           title: 'Appearance',
           subtitle: themeModeLabel(themeMode),
@@ -594,23 +656,85 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
               Icon(Icons.chevron_right_rounded, color: mutedColor, size: 20),
             ],
           ),
-          onTap: () => themeNotifier.setMode(nextMode(themeMode)),
+          onTap: () => context.push(Routes.appearance),
+        ),
+        Consumer(builder: (context, ref, _) {
+          final pinConfig = ref.watch(pinConfigProvider);
+          final isSet = pinConfig.valueOrNull?.pinHash != null;
+          return tile(
+            icon: Icons.lock_outline_rounded,
+            title: 'PIN Lock',
+            subtitle: isSet ? 'Configured · ${pinConfig.valueOrNull?.autoLockMinutes ?? 5} min auto-lock' : 'Not configured',
+            trailing: Switch(
+              value: isSet,
+              activeThumbColor: goldColor,
+              onChanged: (v) async {
+                if (v) {
+                  await showPinSetupSheet(context);
+                } else {
+                  final userId = ref.read(authStateProvider).value?.uid ?? '';
+                  await ref.read(pinRepositoryProvider).setPin(userId, '');
+                  ref.invalidate(pinConfigProvider);
+                }
+              },
+            ),
+            onTap: () => showPinSetupSheet(context),
+          );
+        }),
+        tile(
+          icon: Icons.people_outline,
+          title: 'Accountability',
+          subtitle: 'Partners & check-ins',
+          onTap: () => context.push(Routes.accountability),
         ),
         tile(
-          icon: Icons.lock_outline_rounded,
-          title: 'PIN Lock',
-          subtitle: 'Not configured',
-          trailing: Switch(
-            value: false,
-            onChanged: null,
-            activeThumbColor: goldColor,
-          ),
+          icon: Icons.groups_outlined,
+          title: 'Community Challenges',
+          subtitle: 'Join challenges with other Ryvers',
+          onTap: () => context.push(Routes.communityChallenges),
         ),
+        tile(
+          icon: Icons.widgets_outlined,
+          title: 'Home Screen Widgets',
+          subtitle: 'Habit progress, focus & water widgets',
+          onTap: () => context.push(Routes.widgetConfig),
+        ),
+        tile(
+          icon: Icons.dashboard_customize_outlined,
+          title: 'Customize Dashboard',
+          subtitle: 'Reorder & toggle dashboard cards',
+          onTap: () => context.push(Routes.dashboardCustomize),
+        ),
+        Consumer(builder: (context, ref, _) {
+          final syncStatus = ref.watch(syncControllerProvider);
+          final syncing = syncStatus.phase == SyncPhase.syncing;
+          return tile(
+            icon: Icons.sync_rounded,
+            title: 'Sync Now',
+            subtitle: syncStatus.lastSyncedAt != null
+                ? 'Last synced: ${syncStatus.lastSyncedAt!.toLocal().toString().substring(0, 16)}'
+                : (syncStatus.phase == SyncPhase.error ? 'Sync failed — tap to retry' : 'Never synced'),
+            trailing: syncing
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : Icon(Icons.chevron_right_rounded, color: mutedColor, size: 20),
+            onTap: syncing ? null : () => ref.read(syncControllerProvider.notifier).syncNow(),
+          );
+        }),
         tile(
           icon: Icons.download_outlined,
           title: 'Export Data',
           subtitle: 'Download your data as JSON',
-          onTap: () {},
+          onTap: () => _exportData(context, ref),
+        ),
+        tile(
+          icon: Icons.upload_outlined,
+          title: 'Restore from Backup',
+          subtitle: 'Import a previously exported JSON file',
+          onTap: () => _restoreData(context, ref),
         ),
         tile(
           icon: Icons.logout_rounded,
@@ -807,17 +931,23 @@ class _StatCard extends StatelessWidget {
       ),
       child: Column(
         children: [
-          Text(
-            stat.value,
-            style: TextStyle(
-              color: goldColor,
-              fontSize: 22,
-              fontWeight: FontWeight.w700,
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              stat.value,
+              maxLines: 1,
+              style: TextStyle(
+                color: goldColor,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
           const SizedBox(height: AppSpacing.xs),
           Text(
             stat.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: mutedColor,
               fontSize: 12,

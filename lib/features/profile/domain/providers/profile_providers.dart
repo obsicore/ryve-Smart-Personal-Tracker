@@ -1,6 +1,9 @@
+import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/xp_service.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/profile/data/models/profile_model.dart';
 
@@ -18,80 +21,62 @@ Future<ProfileModel> userProfile(Ref ref) async {
       xpToNextLevel: 100,
     );
   }
+
+  final db = ref.watch(databaseProvider);
+  final xpService = ref.watch(xpServiceProvider);
+
+  final totalXp = await xpService.getTotalXp();
+  final level = levelFromXP(totalXp);
+  final stats = await xpService.getUserStats();
+
+  final focusSessions = await (db.select(db.focusSessions)
+        ..where((f) =>
+            f.userId.equals(user.uid) &
+            f.sessionType.equals('work') &
+            f.wasCompleted.equals(true)))
+      .get();
+  final focusMinutes = focusSessions.fold<int>(0, (sum, f) => sum + f.durationMinutes);
+
   return ProfileModel(
     userId: user.uid,
     displayName: user.displayName ?? 'Ryver',
     email: user.email,
     avatarUrl: user.photoURL,
-    level: 3,
-    xpTotal: 275,
-    xpToNextLevel: 300,
-    currentStreak: 7,
-    bestStreak: 14,
-    tasksCompleted: 42,
-    habitsLogged: 89,
-    focusHours: 12,
+    level: level,
+    xpTotal: xpIntoCurrentLevel(totalXp),
+    xpToNextLevel: xpNeededForNextLevel(totalXp),
+    currentStreak: stats.currentStreak,
+    bestStreak: stats.bestStreak,
+    tasksCompleted: stats.tasksCompleted,
+    habitsLogged: stats.habitLogsCount,
+    focusHours: (focusMinutes / 60).round(),
   );
 }
 
 @riverpod
 Future<List<BadgeModel>> userBadges(Ref ref) async {
-  return const [
-    BadgeModel(
-      id: '1',
-      name: 'First Step',
-      description: 'Complete your first task',
-      iconEmoji: '👟',
-      category: 'tasks',
-      rarity: 1,
-      isEarned: true,
-    ),
-    BadgeModel(
-      id: '2',
-      name: 'Habit Starter',
-      description: 'Log a habit for 3 days',
-      iconEmoji: '🌱',
-      category: 'habits',
-      rarity: 1,
-      isEarned: true,
-    ),
-    BadgeModel(
-      id: '3',
-      name: 'Week Warrior',
-      description: '7-day streak',
-      iconEmoji: '⚔️',
-      category: 'streaks',
-      rarity: 2,
-      isEarned: true,
-    ),
-    BadgeModel(
-      id: '4',
-      name: 'Focus Master',
-      description: 'Complete 10 focus sessions',
-      iconEmoji: '🎯',
-      category: 'focus',
-      rarity: 2,
-      isEarned: false,
-    ),
-    BadgeModel(
-      id: '5',
-      name: 'Century Club',
-      description: '100-day streak',
-      iconEmoji: '💯',
-      category: 'streaks',
-      rarity: 4,
-      isEarned: false,
-    ),
-    BadgeModel(
-      id: '6',
-      name: 'Task Machine',
-      description: 'Complete 100 tasks',
-      iconEmoji: '⚡',
-      category: 'tasks',
-      rarity: 3,
-      isEarned: false,
-    ),
-  ];
+  final userId = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
+  final db = ref.watch(databaseProvider);
+  final xpService = ref.watch(xpServiceProvider);
+
+  await xpService.seedBadgeDefinitionsIfNeeded();
+
+  final definitions = await db.select(db.badgeDefinitions).get();
+  final earned = await (db.select(db.userBadges)..where((b) => b.userId.equals(userId))).get();
+  final earnedById = {for (final e in earned) e.badgeId: e};
+
+  return definitions
+      .map((d) => BadgeModel(
+            id: d.id,
+            name: d.name,
+            description: d.description,
+            iconEmoji: d.iconEmoji,
+            category: d.category,
+            rarity: d.rarity,
+            isEarned: earnedById.containsKey(d.id),
+            earnedAt: earnedById[d.id]?.earnedAt,
+          ))
+      .toList();
 }
 
 @riverpod
@@ -104,7 +89,6 @@ class XpNotifier extends _$XpNotifier {
     required String eventType,
     String? referenceId,
   }) async {
-    // Phase 1: accumulate in memory; Phase 2 will write to xp_events table
     state = state + amount;
   }
 }

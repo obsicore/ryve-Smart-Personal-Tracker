@@ -3,6 +3,9 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/home_widget_service.dart';
+import 'package:hybrid_tracker/core/services/xp_service.dart';
+import 'package:hybrid_tracker/core/utils/wellness_constants.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/wellness/data/models/breathing_session_model.dart';
 import 'package:hybrid_tracker/features/wellness/data/models/energy_log_model.dart';
@@ -85,6 +88,7 @@ class WellnessNotifier extends _$WellnessNotifier {
       updatedAt: now,
     );
     await ref.read(wellnessRepositoryProvider).logMood(log);
+    await ref.read(xpServiceProvider).award(XPEvent.moodLog, entityId: log.id);
   }
 
   Future<void> logEnergy(int level) async {
@@ -105,16 +109,19 @@ class WellnessNotifier extends _$WellnessNotifier {
   Future<void> logWater(int amountMl) async {
     final userId = ref.read(authStateProvider).valueOrNull?.uid ?? '';
     final now = DateTime.now();
-    await ref.read(wellnessRepositoryProvider).logWater(
-          WaterLogModel(
-            id: newWellnessId,
-            userId: userId,
-            logDate: now,
-            logTime: now,
-            amountMl: amountMl,
-            createdAt: now,
-          ),
-        );
+    final log = WaterLogModel(
+      id: newWellnessId,
+      userId: userId,
+      logDate: now,
+      logTime: now,
+      amountMl: amountMl,
+      createdAt: now,
+    );
+    await ref.read(wellnessRepositoryProvider).logWater(log);
+    await ref.read(xpServiceProvider).award(XPEvent.waterLog, entityId: log.id);
+    final todayLogs = await ref.read(todayWaterLogsProvider.future);
+    final total = todayLogs.fold(0, (sum, l) => sum + l.amountMl);
+    await HomeWidgetService.updateWaterTracker(consumedMl: total, goalMl: defaultWaterGoalMl);
   }
 
   Future<void> logSteps(int steps) async {

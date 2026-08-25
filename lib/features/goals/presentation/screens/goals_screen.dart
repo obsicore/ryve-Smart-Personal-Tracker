@@ -116,7 +116,10 @@ class _GoalsTabBody extends ConsumerWidget {
               error: (_, __) => const SizedBox.shrink(),
               data: (report) {
                 if (report == null) return const SizedBox.shrink();
-                return _WeeklyReportCard(report: report);
+                return GestureDetector(
+                  onTap: () => context.push(Routes.weeklyReport),
+                  child: _WeeklyReportCard(report: report),
+                );
               },
             ),
             const SizedBox(height: AppSpacing.xxl),

@@ -10,6 +10,7 @@ abstract class SleepRepository {
     int days = 7,
   });
   Stream<List<AlarmModel>> watchAlarms(String userId);
+  Future<AlarmModel?> getAlarm(String id);
   Future<SleepLogModel?> getLastSleepLog(String userId);
   Future<void> logSleep(SleepLogModel log);
   Future<void> updateSleepLog(SleepLogModel log);
@@ -98,6 +99,14 @@ class SleepRepositoryImpl implements SleepRepository {
           ..orderBy([(a) => OrderingTerm.asc(a.createdAt)]))
         .watch()
         .map((rows) => rows.map(_alarmRowToModel).toList());
+  }
+
+  @override
+  Future<AlarmModel?> getAlarm(String id) async {
+    final row = await (_db.select(_db.alarms)..where((a) => a.id.equals(id)))
+        .getSingleOrNull();
+    if (row == null) return null;
+    return _alarmRowToModel(row);
   }
 
   @override

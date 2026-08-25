@@ -435,28 +435,37 @@ class _DaySelector extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget row = Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: List.generate(7, (i) {
         final day = i + 1;
         final isSelected = selected.contains(day);
-        return GestureDetector(
-          onTap: () => onToggle(day),
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 180),
-            width: 40,
-            height: 40,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected ? primary : surface,
-              border: Border.all(
-                color: isSelected ? primary : surfaceBright,
-                width: 1.5,
+        return Expanded(
+          child: Center(
+            child: GestureDetector(
+              onTap: () => onToggle(day),
+              child: AspectRatio(
+                aspectRatio: 1,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 40, maxHeight: 40),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 180),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected ? primary : surface,
+                      border: Border.all(
+                        color: isSelected ? primary : surfaceBright,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: FittedBox(
+                      child: Text(
+                        _labels[i],
+                        style: AppTypography.labelMedium(isSelected ? onPrimary : muted),
+                      ),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              _labels[i],
-              style: AppTypography.labelMedium(isSelected ? onPrimary : muted),
             ),
           ),
         );

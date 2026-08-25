@@ -3,6 +3,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/notification_service.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/sleep/data/models/alarm_model.dart';
 import 'package:hybrid_tracker/features/sleep/data/models/sleep_log_model.dart';
@@ -53,17 +54,28 @@ class AlarmNotifier extends _$AlarmNotifier {
   @override
   Future<void> build() async {}
 
-  Future<void> create(AlarmModel alarm) =>
-      ref.read(sleepRepositoryProvider).createAlarm(alarm);
+  Future<void> create(AlarmModel alarm) async {
+    await ref.read(sleepRepositoryProvider).createAlarm(alarm);
+    await NotificationService.instance.scheduleAlarm(alarm);
+  }
 
-  Future<void> updateAlarm(AlarmModel alarm) =>
-      ref.read(sleepRepositoryProvider).updateAlarm(alarm);
+  Future<void> updateAlarm(AlarmModel alarm) async {
+    await ref.read(sleepRepositoryProvider).updateAlarm(alarm);
+    await NotificationService.instance.scheduleAlarm(alarm);
+  }
 
-  Future<void> delete(String id) =>
-      ref.read(sleepRepositoryProvider).deleteAlarm(id);
+  Future<void> delete(String id) async {
+    await ref.read(sleepRepositoryProvider).deleteAlarm(id);
+    await NotificationService.instance.cancelAlarm(id);
+  }
 
-  Future<void> toggle(String id, bool enabled) =>
-      ref.read(sleepRepositoryProvider).toggleAlarm(id, enabled);
+  Future<void> toggle(String id, bool enabled) async {
+    await ref.read(sleepRepositoryProvider).toggleAlarm(id, enabled);
+    final alarm = await ref.read(sleepRepositoryProvider).getAlarm(id);
+    if (alarm != null) {
+      await NotificationService.instance.scheduleAlarm(alarm);
+    }
+  }
 }
 
 const _uuid = Uuid();

@@ -10,10 +10,12 @@ class BadgeCard extends StatefulWidget {
     super.key,
     required this.badge,
     this.animationDelay = Duration.zero,
+    this.onTap,
   });
 
   final BadgeModel badge;
   final Duration animationDelay;
+  final VoidCallback? onTap;
 
   @override
   State<BadgeCard> createState() => _BadgeCardState();
@@ -152,6 +154,7 @@ class _BadgeCardState extends State<BadgeCard>
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,
+      onTap: widget.onTap,
       child: AnimatedBuilder(
         animation: _pressAnimation,
         builder: (context, child) => Transform.scale(

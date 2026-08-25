@@ -60,7 +60,7 @@ final focusStreakProvider = AutoDisposeFutureProvider<int>.internal(
 // ignore: unused_element
 typedef FocusStreakRef = AutoDisposeFutureProviderRef<int>;
 String _$focusTimerNotifierHash() =>
-    r'15e60506e1bb1cf0bba06bec555d05f35d11ff3d';
+    r'1b852ef0e5a023243fced09d83850967da1e31b0';
 
 /// See also [FocusTimerNotifier].
 @ProviderFor(FocusTimerNotifier)

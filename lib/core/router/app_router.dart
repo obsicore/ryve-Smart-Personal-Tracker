@@ -24,6 +24,18 @@ import 'package:hybrid_tracker/features/wellness/presentation/screens/breathing_
 import 'package:hybrid_tracker/features/goals/presentation/screens/goals_screen.dart';
 import 'package:hybrid_tracker/features/goals/presentation/screens/goal_detail_screen.dart';
 import 'package:hybrid_tracker/features/goals/presentation/screens/create_goal_screen.dart';
+import 'package:hybrid_tracker/features/goals/presentation/screens/weekly_report_screen.dart';
+import 'package:hybrid_tracker/features/journal/presentation/screens/journal_screen.dart';
+import 'package:hybrid_tracker/features/journal/presentation/screens/write_entry_screen.dart';
+import 'package:hybrid_tracker/features/ai/presentation/screens/ai_planner_screen.dart';
+import 'package:hybrid_tracker/features/ai/presentation/screens/smart_reminder_setup_screen.dart';
+import 'package:hybrid_tracker/features/gamification/presentation/screens/challenge_list_screen.dart';
+import 'package:hybrid_tracker/features/social/presentation/screens/accountability_screen.dart';
+import 'package:hybrid_tracker/features/social/presentation/screens/community_challenge_browser_screen.dart';
+import 'package:hybrid_tracker/features/customization/presentation/screens/widget_config_screen.dart';
+import 'package:hybrid_tracker/features/auth/presentation/screens/pin_lock_screen.dart';
+import 'package:hybrid_tracker/features/customization/presentation/screens/appearance_screen.dart';
+import 'package:hybrid_tracker/features/customization/presentation/screens/dashboard_customize_screen.dart';
 
 part 'app_router.g.dart';
 
@@ -50,6 +62,19 @@ abstract final class Routes {
   static const goals     = '/goals';
   static const goalCreate = '/goals/create';
   static const goalDetail = '/goals/:id';
+  static const weeklyReport = '/goals/weekly-report';
+  static const journal   = '/journal';
+  static const journalNew = '/journal/new';
+  static const journalDetail = '/journal/:id';
+  static const aiPlanner = '/ai-planner';
+  static const smartReminders = '/smart-reminders';
+  static const challenges = '/challenges';
+  static const accountability = '/accountability';
+  static const communityChallenges = '/community-challenges';
+  static const widgetConfig = '/widgets';
+  static const pinLock = '/pin-lock';
+  static const appearance = '/appearance';
+  static const dashboardCustomize = '/dashboard-customize';
 }
 
 // Routes that do NOT require authentication
@@ -268,6 +293,13 @@ GoRouter appRouter(Ref ref) {
             ),
           ),
           GoRoute(
+            path: 'weekly-report',
+            pageBuilder: (context, state) => _fadeSlidePage(
+              pageKey: state.pageKey,
+              child: const WeeklyReportScreen(),
+            ),
+          ),
+          GoRoute(
             path: ':id',
             pageBuilder: (context, state) {
               final id = state.pathParameters['id']!;
@@ -278,6 +310,95 @@ GoRouter appRouter(Ref ref) {
             },
           ),
         ],
+      ),
+      GoRoute(
+        path: Routes.journal,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const JournalScreen(),
+        ),
+        routes: [
+          GoRoute(
+            path: 'new',
+            pageBuilder: (context, state) => _fadeSlidePage(
+              pageKey: state.pageKey,
+              child: const WriteEntryScreen(),
+            ),
+          ),
+          GoRoute(
+            path: ':id',
+            pageBuilder: (context, state) {
+              final id = state.pathParameters['id']!;
+              return _fadeSlidePage(
+                pageKey: state.pageKey,
+                child: WriteEntryScreen(entryId: id),
+              );
+            },
+          ),
+        ],
+      ),
+      GoRoute(
+        path: Routes.aiPlanner,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const AIPlannerScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.smartReminders,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const SmartReminderSetupScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.challenges,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const ChallengeListScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.accountability,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const AccountabilityScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.communityChallenges,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const CommunityChallengeBrowserScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.widgetConfig,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const WidgetConfigScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.pinLock,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const PinLockScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.appearance,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const AppearanceScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.dashboardCustomize,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const DashboardCustomizeScreen(),
+        ),
       ),
     ],
   );

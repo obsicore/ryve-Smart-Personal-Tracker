@@ -1,0 +1,4 @@
+storePassword=REPLACE_ME
+keyPassword=REPLACE_ME
+keyAlias=ryve
+storeFile=/absolute/path/to/ryve-release.jks

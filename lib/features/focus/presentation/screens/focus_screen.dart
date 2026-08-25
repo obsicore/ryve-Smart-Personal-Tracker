@@ -11,6 +11,7 @@ import 'package:hybrid_tracker/features/focus/domain/providers/focus_providers.d
 import 'package:hybrid_tracker/features/focus/presentation/widgets/timer_ring.dart';
 import 'package:hybrid_tracker/shared/widgets/ryve_bottom_nav.dart';
 import 'package:hybrid_tracker/shared/widgets/skeleton_widget.dart';
+import 'package:hybrid_tracker/shared/widgets/xp_float_overlay.dart';
 
 class FocusScreen extends ConsumerStatefulWidget {
   const FocusScreen({super.key});
@@ -65,6 +66,13 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     final muted = isDark ? AppColors.darkOnSurfaceMuted : AppColors.lightOnSurfaceMuted;
     final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
     final secondary = isDark ? AppColors.darkSecondary : AppColors.lightSecondary;
+
+    ref.listen<FocusTimerState>(focusTimerNotifierProvider, (previous, next) {
+      if (next.sessionType != FocusSessionType.work &&
+          (previous?.completedSessions ?? 0) < next.completedSessions) {
+        XpFloatOverlay.show(context, 15);
+      }
+    });
 
     final timerState = ref.watch(focusTimerNotifierProvider);
     final notifier = ref.read(focusTimerNotifierProvider.notifier);
@@ -247,8 +255,9 @@ class _SessionChips extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runSpacing: AppSpacing.xs,
       children: FocusSessionType.values.map((type) {
         final isSelected = current == type;
         final label = switch (type) {
