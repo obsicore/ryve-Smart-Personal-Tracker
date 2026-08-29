@@ -95,8 +95,10 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
       case 1:
         context.go(Routes.tasks);
       case 2:
-        context.go(Routes.habits);
+        context.go(Routes.alarms);
       case 3:
+        context.go(Routes.sleep);
+      case 4:
         context.go(Routes.focus);
     }
   }
@@ -126,10 +128,15 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
     final greenColor =
         isDark ? AppColors.darkSecondary : AppColors.lightSecondary;
 
-    return Scaffold(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: Scaffold(
       backgroundColor: bgColor,
       bottomNavigationBar: RyveBottomNav(
-        currentIndex: 4,
+        currentIndex: 5,
         onTap: _onNavTap,
       ),
       body: profileAsync.when(
@@ -261,6 +268,7 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
             ],
           ),
         ),
+      ),
       ),
     );
   }
@@ -721,7 +729,12 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
                     child: CircularProgressIndicator(strokeWidth: 2),
                   )
                 : Icon(Icons.chevron_right_rounded, color: mutedColor, size: 20),
-            onTap: syncing ? null : () => ref.read(syncControllerProvider.notifier).syncNow(),
+            onTap: syncing
+                ? null
+                : () {
+                    final uid = ref.read(authStateProvider).valueOrNull?.uid ?? '';
+                    ref.read(syncControllerProvider.notifier).syncNow(uid);
+                  },
           );
         }),
         tile(

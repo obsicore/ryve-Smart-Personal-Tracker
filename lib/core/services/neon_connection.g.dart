@@ -7,7 +7,7 @@ part of 'neon_connection.dart';
 // **************************************************************************
 
 String _$neonConnectionHolderHash() =>
-    r'989ec9cdc885677591e942a2a285f0aeefa72aac';
+    r'59c48da6e1a2d75fbc2f6e29e6ab2e37039ce5b3';
 
 /// See also [neonConnectionHolder].
 @ProviderFor(neonConnectionHolder)

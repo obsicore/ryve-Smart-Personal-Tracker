@@ -1,40 +1,27 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:postgres/postgres.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import 'package:hybrid_tracker/core/database/remote/neon_config.dart';
+import 'package:hybrid_tracker/core/database/remote/neon_http_service.dart';
 
 part 'neon_connection.g.dart';
 
-/// Shared, lazily-opened Postgres connection to Neon. Every remote-backed
-/// service (SyncService, social/community repositories) uses this instead
-/// of opening its own connection.
+/// Kept for backward-compat with social_repository.
+/// Delegates to [NeonHttpService] under the hood.
 class NeonConnectionHolder {
-  Connection? _conn;
+  final _http = NeonHttpService();
 
-  Future<Connection> get() async {
-    if (_conn != null && _conn!.isOpen) return _conn!;
-    _conn = await Connection.open(
-      Endpoint(
-        host: neonHost,
-        database: neonDatabase,
-        username: neonUser,
-        password: neonPassword,
-      ),
-      settings: const ConnectionSettings(sslMode: SslMode.require),
-    );
-    return _conn!;
-  }
+  Future<List<Map<String, dynamic>>> query(
+    String sql,
+    List<dynamic> params,
+  ) =>
+      _http.query(sql, params);
 
-  Future<void> close() async {
-    await _conn?.close();
-    _conn = null;
-  }
+  Future<List<Map<String, dynamic>>> namedQuery(
+    String namedSql,
+    Map<String, dynamic> namedParams,
+  ) =>
+      _http.namedQuery(namedSql, namedParams);
 }
 
 @Riverpod(keepAlive: true)
-NeonConnectionHolder neonConnectionHolder(Ref ref) {
-  final holder = NeonConnectionHolder();
-  ref.onDispose(holder.close);
-  return holder;
-}
+NeonConnectionHolder neonConnectionHolder(Ref ref) => NeonConnectionHolder();

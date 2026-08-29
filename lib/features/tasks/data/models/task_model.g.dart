@@ -18,6 +18,7 @@ _TaskModel _$TaskModelFromJson(Map<String, dynamic> json) => _TaskModel(
       dueDate: json['dueDate'] == null
           ? null
           : DateTime.parse(json['dueDate'] as String),
+      reminderMinutesBefore: (json['reminderMinutesBefore'] as num?)?.toInt(),
       isCompleted: json['isCompleted'] as bool? ?? false,
       completedAt: json['completedAt'] == null
           ? null
@@ -44,6 +45,7 @@ Map<String, dynamic> _$TaskModelToJson(_TaskModel instance) =>
       'isUrgent': instance.isUrgent,
       'isImportant': instance.isImportant,
       'dueDate': instance.dueDate?.toIso8601String(),
+      'reminderMinutesBefore': instance.reminderMinutesBefore,
       'isCompleted': instance.isCompleted,
       'completedAt': instance.completedAt?.toIso8601String(),
       'subtasks': instance.subtasks,

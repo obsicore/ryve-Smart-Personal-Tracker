@@ -64,6 +64,12 @@ class _JournalScreenState extends ConsumerState<JournalScreen> {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: context.canPop()
+            ? IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: Text('Journal', style: AppTypography.titleLarge(onBg)),
         actions: [
           IconButton(

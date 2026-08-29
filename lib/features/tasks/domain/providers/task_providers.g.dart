@@ -224,7 +224,7 @@ class _TaskByIdProviderElement
   String get id => (origin as TaskByIdProvider).id;
 }
 
-String _$taskNotifierHash() => r'5c07658aa6a5dfdb2b9ce5df75841042d5051980';
+String _$taskNotifierHash() => r'ae6a3316caf50f03f82086a4dda785176c52c8be';
 
 /// See also [TaskNotifier].
 @ProviderFor(TaskNotifier)

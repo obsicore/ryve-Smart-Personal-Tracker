@@ -72,7 +72,7 @@ final sleepNotifierProvider =
 );
 
 typedef _$SleepNotifier = AutoDisposeAsyncNotifier<void>;
-String _$alarmNotifierHash() => r'782fcff97f2e5161aed2b20fec191f2f1461e049';
+String _$alarmNotifierHash() => r'75decdacf7c7c01f9367e402cde994d792f5f414';
 
 /// See also [AlarmNotifier].
 @ProviderFor(AlarmNotifier)

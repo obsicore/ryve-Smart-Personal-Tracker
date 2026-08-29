@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/notification_service.dart';
 import 'package:hybrid_tracker/core/services/xp_service.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/tasks/data/models/task_model.dart';
@@ -8,6 +9,13 @@ import 'package:hybrid_tracker/features/tasks/data/repositories/task_repository.
 import 'package:hybrid_tracker/features/goals/domain/providers/goals_providers.dart' show goalsRepositoryProvider;
 
 part 'task_providers.g.dart';
+
+DateTime? taskReminderFireTime(TaskModel task) {
+  final due = task.dueDate;
+  final minutesBefore = task.reminderMinutesBefore;
+  if (due == null || minutesBefore == null) return null;
+  return due.subtract(Duration(minutes: minutesBefore));
+}
 
 // ---------------------------------------------------------------------------
 // Repository provider
@@ -81,20 +89,38 @@ class TaskNotifier extends _$TaskNotifier {
   @override
   Future<void> build() async {}
 
-  Future<void> createTask(TaskModel task) =>
-      ref.read(taskRepositoryProvider).createTask(task);
+  // Scheduling a reminder must not block/roll back a task save — the task
+  // row is the source of truth, the OS-level schedule is best-effort.
+  Future<void> _scheduleReminderOrIgnore(TaskModel task) async {
+    try {
+      await NotificationService.instance
+          .scheduleTaskReminder(task.id, task.title, taskReminderFireTime(task));
+    } catch (_) {
+      // Task is saved; only the OS notification failed to schedule.
+    }
+  }
 
-  Future<void> updateTask(TaskModel task) =>
-      ref.read(taskRepositoryProvider).updateTask(task);
+  Future<void> createTask(TaskModel task) async {
+    await ref.read(taskRepositoryProvider).createTask(task);
+    await _scheduleReminderOrIgnore(task);
+  }
+
+  Future<void> updateTask(TaskModel task) async {
+    await ref.read(taskRepositoryProvider).updateTask(task);
+    await _scheduleReminderOrIgnore(task);
+  }
 
   Future<void> completeTask(String id) async {
     await ref.read(taskRepositoryProvider).completeTask(id);
+    await NotificationService.instance.cancelTaskReminder(id);
     await ref.read(xpServiceProvider).award(XPEvent.taskComplete, entityId: id);
     await ref.read(goalsRepositoryProvider).incrementLinkedGoalsForTask(id);
   }
 
-  Future<void> deleteTask(String id) =>
-      ref.read(taskRepositoryProvider).deleteTask(id);
+  Future<void> deleteTask(String id) async {
+    await ref.read(taskRepositoryProvider).deleteTask(id);
+    await NotificationService.instance.cancelTaskReminder(id);
+  }
 
   Future<void> createSubtask(SubtaskModel subtask) =>
       ref.read(taskRepositoryProvider).createSubtask(subtask);

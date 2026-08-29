@@ -3302,6 +3302,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
   late final GeneratedColumn<DateTime> dueTime = GeneratedColumn<DateTime>(
       'due_time', aliasedName, true,
       type: DriftSqlType.dateTime, requiredDuringInsert: false);
+  static const VerificationMeta _reminderMinutesBeforeMeta =
+      const VerificationMeta('reminderMinutesBefore');
+  @override
+  late final GeneratedColumn<int> reminderMinutesBefore = GeneratedColumn<int>(
+      'reminder_minutes_before', aliasedName, true,
+      type: DriftSqlType.int, requiredDuringInsert: false);
   static const VerificationMeta _isCompletedMeta =
       const VerificationMeta('isCompleted');
   @override
@@ -3365,6 +3371,7 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
         isImportant,
         dueDate,
         dueTime,
+        reminderMinutesBefore,
         isCompleted,
         completedAt,
         recurringConfigId,
@@ -3427,6 +3434,12 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
     if (data.containsKey('due_time')) {
       context.handle(_dueTimeMeta,
           dueTime.isAcceptableOrUnknown(data['due_time']!, _dueTimeMeta));
+    }
+    if (data.containsKey('reminder_minutes_before')) {
+      context.handle(
+          _reminderMinutesBeforeMeta,
+          reminderMinutesBefore.isAcceptableOrUnknown(
+              data['reminder_minutes_before']!, _reminderMinutesBeforeMeta));
     }
     if (data.containsKey('is_completed')) {
       context.handle(
@@ -3493,6 +3506,8 @@ class $TasksTable extends Tasks with TableInfo<$TasksTable, Task> {
           .read(DriftSqlType.dateTime, data['${effectivePrefix}due_date']),
       dueTime: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}due_time']),
+      reminderMinutesBefore: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}reminder_minutes_before']),
       isCompleted: attachedDatabase.typeMapping
           .read(DriftSqlType.bool, data['${effectivePrefix}is_completed'])!,
       completedAt: attachedDatabase.typeMapping
@@ -3526,6 +3541,7 @@ class Task extends DataClass implements Insertable<Task> {
   final bool isImportant;
   final DateTime? dueDate;
   final DateTime? dueTime;
+  final int? reminderMinutesBefore;
   final bool isCompleted;
   final DateTime? completedAt;
   final String? recurringConfigId;
@@ -3543,6 +3559,7 @@ class Task extends DataClass implements Insertable<Task> {
       required this.isImportant,
       this.dueDate,
       this.dueTime,
+      this.reminderMinutesBefore,
       required this.isCompleted,
       this.completedAt,
       this.recurringConfigId,
@@ -3567,6 +3584,9 @@ class Task extends DataClass implements Insertable<Task> {
     }
     if (!nullToAbsent || dueTime != null) {
       map['due_time'] = Variable<DateTime>(dueTime);
+    }
+    if (!nullToAbsent || reminderMinutesBefore != null) {
+      map['reminder_minutes_before'] = Variable<int>(reminderMinutesBefore);
     }
     map['is_completed'] = Variable<bool>(isCompleted);
     if (!nullToAbsent || completedAt != null) {
@@ -3601,6 +3621,9 @@ class Task extends DataClass implements Insertable<Task> {
       dueTime: dueTime == null && nullToAbsent
           ? const Value.absent()
           : Value(dueTime),
+      reminderMinutesBefore: reminderMinutesBefore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(reminderMinutesBefore),
       isCompleted: Value(isCompleted),
       completedAt: completedAt == null && nullToAbsent
           ? const Value.absent()
@@ -3630,6 +3653,8 @@ class Task extends DataClass implements Insertable<Task> {
       isImportant: serializer.fromJson<bool>(json['isImportant']),
       dueDate: serializer.fromJson<DateTime?>(json['dueDate']),
       dueTime: serializer.fromJson<DateTime?>(json['dueTime']),
+      reminderMinutesBefore:
+          serializer.fromJson<int?>(json['reminderMinutesBefore']),
       isCompleted: serializer.fromJson<bool>(json['isCompleted']),
       completedAt: serializer.fromJson<DateTime?>(json['completedAt']),
       recurringConfigId:
@@ -3653,6 +3678,7 @@ class Task extends DataClass implements Insertable<Task> {
       'isImportant': serializer.toJson<bool>(isImportant),
       'dueDate': serializer.toJson<DateTime?>(dueDate),
       'dueTime': serializer.toJson<DateTime?>(dueTime),
+      'reminderMinutesBefore': serializer.toJson<int?>(reminderMinutesBefore),
       'isCompleted': serializer.toJson<bool>(isCompleted),
       'completedAt': serializer.toJson<DateTime?>(completedAt),
       'recurringConfigId': serializer.toJson<String?>(recurringConfigId),
@@ -3673,6 +3699,7 @@ class Task extends DataClass implements Insertable<Task> {
           bool? isImportant,
           Value<DateTime?> dueDate = const Value.absent(),
           Value<DateTime?> dueTime = const Value.absent(),
+          Value<int?> reminderMinutesBefore = const Value.absent(),
           bool? isCompleted,
           Value<DateTime?> completedAt = const Value.absent(),
           Value<String?> recurringConfigId = const Value.absent(),
@@ -3690,6 +3717,9 @@ class Task extends DataClass implements Insertable<Task> {
         isImportant: isImportant ?? this.isImportant,
         dueDate: dueDate.present ? dueDate.value : this.dueDate,
         dueTime: dueTime.present ? dueTime.value : this.dueTime,
+        reminderMinutesBefore: reminderMinutesBefore.present
+            ? reminderMinutesBefore.value
+            : this.reminderMinutesBefore,
         isCompleted: isCompleted ?? this.isCompleted,
         completedAt: completedAt.present ? completedAt.value : this.completedAt,
         recurringConfigId: recurringConfigId.present
@@ -3715,6 +3745,9 @@ class Task extends DataClass implements Insertable<Task> {
           data.isImportant.present ? data.isImportant.value : this.isImportant,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
       dueTime: data.dueTime.present ? data.dueTime.value : this.dueTime,
+      reminderMinutesBefore: data.reminderMinutesBefore.present
+          ? data.reminderMinutesBefore.value
+          : this.reminderMinutesBefore,
       isCompleted:
           data.isCompleted.present ? data.isCompleted.value : this.isCompleted,
       completedAt:
@@ -3744,6 +3777,7 @@ class Task extends DataClass implements Insertable<Task> {
           ..write('isImportant: $isImportant, ')
           ..write('dueDate: $dueDate, ')
           ..write('dueTime: $dueTime, ')
+          ..write('reminderMinutesBefore: $reminderMinutesBefore, ')
           ..write('isCompleted: $isCompleted, ')
           ..write('completedAt: $completedAt, ')
           ..write('recurringConfigId: $recurringConfigId, ')
@@ -3766,6 +3800,7 @@ class Task extends DataClass implements Insertable<Task> {
       isImportant,
       dueDate,
       dueTime,
+      reminderMinutesBefore,
       isCompleted,
       completedAt,
       recurringConfigId,
@@ -3786,6 +3821,7 @@ class Task extends DataClass implements Insertable<Task> {
           other.isImportant == this.isImportant &&
           other.dueDate == this.dueDate &&
           other.dueTime == this.dueTime &&
+          other.reminderMinutesBefore == this.reminderMinutesBefore &&
           other.isCompleted == this.isCompleted &&
           other.completedAt == this.completedAt &&
           other.recurringConfigId == this.recurringConfigId &&
@@ -3805,6 +3841,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
   final Value<bool> isImportant;
   final Value<DateTime?> dueDate;
   final Value<DateTime?> dueTime;
+  final Value<int?> reminderMinutesBefore;
   final Value<bool> isCompleted;
   final Value<DateTime?> completedAt;
   final Value<String?> recurringConfigId;
@@ -3823,6 +3860,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.isImportant = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.dueTime = const Value.absent(),
+    this.reminderMinutesBefore = const Value.absent(),
     this.isCompleted = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.recurringConfigId = const Value.absent(),
@@ -3842,6 +3880,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     this.isImportant = const Value.absent(),
     this.dueDate = const Value.absent(),
     this.dueTime = const Value.absent(),
+    this.reminderMinutesBefore = const Value.absent(),
     this.isCompleted = const Value.absent(),
     this.completedAt = const Value.absent(),
     this.recurringConfigId = const Value.absent(),
@@ -3863,6 +3902,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
     Expression<bool>? isImportant,
     Expression<DateTime>? dueDate,
     Expression<DateTime>? dueTime,
+    Expression<int>? reminderMinutesBefore,
     Expression<bool>? isCompleted,
     Expression<DateTime>? completedAt,
     Expression<String>? recurringConfigId,
@@ -3882,6 +3922,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
       if (isImportant != null) 'is_important': isImportant,
       if (dueDate != null) 'due_date': dueDate,
       if (dueTime != null) 'due_time': dueTime,
+      if (reminderMinutesBefore != null)
+        'reminder_minutes_before': reminderMinutesBefore,
       if (isCompleted != null) 'is_completed': isCompleted,
       if (completedAt != null) 'completed_at': completedAt,
       if (recurringConfigId != null) 'recurring_config_id': recurringConfigId,
@@ -3903,6 +3945,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
       Value<bool>? isImportant,
       Value<DateTime?>? dueDate,
       Value<DateTime?>? dueTime,
+      Value<int?>? reminderMinutesBefore,
       Value<bool>? isCompleted,
       Value<DateTime?>? completedAt,
       Value<String?>? recurringConfigId,
@@ -3921,6 +3964,8 @@ class TasksCompanion extends UpdateCompanion<Task> {
       isImportant: isImportant ?? this.isImportant,
       dueDate: dueDate ?? this.dueDate,
       dueTime: dueTime ?? this.dueTime,
+      reminderMinutesBefore:
+          reminderMinutesBefore ?? this.reminderMinutesBefore,
       isCompleted: isCompleted ?? this.isCompleted,
       completedAt: completedAt ?? this.completedAt,
       recurringConfigId: recurringConfigId ?? this.recurringConfigId,
@@ -3962,6 +4007,10 @@ class TasksCompanion extends UpdateCompanion<Task> {
     if (dueTime.present) {
       map['due_time'] = Variable<DateTime>(dueTime.value);
     }
+    if (reminderMinutesBefore.present) {
+      map['reminder_minutes_before'] =
+          Variable<int>(reminderMinutesBefore.value);
+    }
     if (isCompleted.present) {
       map['is_completed'] = Variable<bool>(isCompleted.value);
     }
@@ -4001,6 +4050,7 @@ class TasksCompanion extends UpdateCompanion<Task> {
           ..write('isImportant: $isImportant, ')
           ..write('dueDate: $dueDate, ')
           ..write('dueTime: $dueTime, ')
+          ..write('reminderMinutesBefore: $reminderMinutesBefore, ')
           ..write('isCompleted: $isCompleted, ')
           ..write('completedAt: $completedAt, ')
           ..write('recurringConfigId: $recurringConfigId, ')
@@ -12368,6 +12418,22 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
       type: DriftSqlType.string,
       requiredDuringInsert: false,
       defaultValue: const Constant('default'));
+  static const VerificationMeta _mathLevelMeta =
+      const VerificationMeta('mathLevel');
+  @override
+  late final GeneratedColumn<int> mathLevel = GeneratedColumn<int>(
+      'math_level', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(1));
+  static const VerificationMeta _mathProblemCountMeta =
+      const VerificationMeta('mathProblemCount');
+  @override
+  late final GeneratedColumn<int> mathProblemCount = GeneratedColumn<int>(
+      'math_problem_count', aliasedName, false,
+      type: DriftSqlType.int,
+      requiredDuringInsert: false,
+      defaultValue: const Constant(3));
   static const VerificationMeta _createdAtMeta =
       const VerificationMeta('createdAt');
   @override
@@ -12388,6 +12454,8 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
         snoozeCount,
         snoozeDurationMinutes,
         soundName,
+        mathLevel,
+        mathProblemCount,
         createdAt
       ];
   @override
@@ -12453,6 +12521,16 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
       context.handle(_soundNameMeta,
           soundName.isAcceptableOrUnknown(data['sound_name']!, _soundNameMeta));
     }
+    if (data.containsKey('math_level')) {
+      context.handle(_mathLevelMeta,
+          mathLevel.isAcceptableOrUnknown(data['math_level']!, _mathLevelMeta));
+    }
+    if (data.containsKey('math_problem_count')) {
+      context.handle(
+          _mathProblemCountMeta,
+          mathProblemCount.isAcceptableOrUnknown(
+              data['math_problem_count']!, _mathProblemCountMeta));
+    }
     if (data.containsKey('created_at')) {
       context.handle(_createdAtMeta,
           createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta));
@@ -12486,6 +12564,10 @@ class $AlarmsTable extends Alarms with TableInfo<$AlarmsTable, Alarm> {
           DriftSqlType.int, data['${effectivePrefix}snooze_duration_minutes'])!,
       soundName: attachedDatabase.typeMapping
           .read(DriftSqlType.string, data['${effectivePrefix}sound_name'])!,
+      mathLevel: attachedDatabase.typeMapping
+          .read(DriftSqlType.int, data['${effectivePrefix}math_level'])!,
+      mathProblemCount: attachedDatabase.typeMapping.read(
+          DriftSqlType.int, data['${effectivePrefix}math_problem_count'])!,
       createdAt: attachedDatabase.typeMapping
           .read(DriftSqlType.dateTime, data['${effectivePrefix}created_at'])!,
     );
@@ -12508,6 +12590,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
   final int snoozeCount;
   final int snoozeDurationMinutes;
   final String soundName;
+  final int mathLevel;
+  final int mathProblemCount;
   final DateTime createdAt;
   const Alarm(
       {required this.id,
@@ -12520,6 +12604,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       required this.snoozeCount,
       required this.snoozeDurationMinutes,
       required this.soundName,
+      required this.mathLevel,
+      required this.mathProblemCount,
       required this.createdAt});
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -12534,6 +12620,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
     map['snooze_count'] = Variable<int>(snoozeCount);
     map['snooze_duration_minutes'] = Variable<int>(snoozeDurationMinutes);
     map['sound_name'] = Variable<String>(soundName);
+    map['math_level'] = Variable<int>(mathLevel);
+    map['math_problem_count'] = Variable<int>(mathProblemCount);
     map['created_at'] = Variable<DateTime>(createdAt);
     return map;
   }
@@ -12550,6 +12638,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       snoozeCount: Value(snoozeCount),
       snoozeDurationMinutes: Value(snoozeDurationMinutes),
       soundName: Value(soundName),
+      mathLevel: Value(mathLevel),
+      mathProblemCount: Value(mathProblemCount),
       createdAt: Value(createdAt),
     );
   }
@@ -12569,6 +12659,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       snoozeDurationMinutes:
           serializer.fromJson<int>(json['snoozeDurationMinutes']),
       soundName: serializer.fromJson<String>(json['soundName']),
+      mathLevel: serializer.fromJson<int>(json['mathLevel']),
+      mathProblemCount: serializer.fromJson<int>(json['mathProblemCount']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
     );
   }
@@ -12586,6 +12678,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       'snoozeCount': serializer.toJson<int>(snoozeCount),
       'snoozeDurationMinutes': serializer.toJson<int>(snoozeDurationMinutes),
       'soundName': serializer.toJson<String>(soundName),
+      'mathLevel': serializer.toJson<int>(mathLevel),
+      'mathProblemCount': serializer.toJson<int>(mathProblemCount),
       'createdAt': serializer.toJson<DateTime>(createdAt),
     };
   }
@@ -12601,6 +12695,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           int? snoozeCount,
           int? snoozeDurationMinutes,
           String? soundName,
+          int? mathLevel,
+          int? mathProblemCount,
           DateTime? createdAt}) =>
       Alarm(
         id: id ?? this.id,
@@ -12614,6 +12710,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
         snoozeDurationMinutes:
             snoozeDurationMinutes ?? this.snoozeDurationMinutes,
         soundName: soundName ?? this.soundName,
+        mathLevel: mathLevel ?? this.mathLevel,
+        mathProblemCount: mathProblemCount ?? this.mathProblemCount,
         createdAt: createdAt ?? this.createdAt,
       );
   Alarm copyWithCompanion(AlarmsCompanion data) {
@@ -12633,6 +12731,10 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ? data.snoozeDurationMinutes.value
           : this.snoozeDurationMinutes,
       soundName: data.soundName.present ? data.soundName.value : this.soundName,
+      mathLevel: data.mathLevel.present ? data.mathLevel.value : this.mathLevel,
+      mathProblemCount: data.mathProblemCount.present
+          ? data.mathProblemCount.value
+          : this.mathProblemCount,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
     );
   }
@@ -12650,6 +12752,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           ..write('snoozeCount: $snoozeCount, ')
           ..write('snoozeDurationMinutes: $snoozeDurationMinutes, ')
           ..write('soundName: $soundName, ')
+          ..write('mathLevel: $mathLevel, ')
+          ..write('mathProblemCount: $mathProblemCount, ')
           ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
@@ -12667,6 +12771,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
       snoozeCount,
       snoozeDurationMinutes,
       soundName,
+      mathLevel,
+      mathProblemCount,
       createdAt);
   @override
   bool operator ==(Object other) =>
@@ -12682,6 +12788,8 @@ class Alarm extends DataClass implements Insertable<Alarm> {
           other.snoozeCount == this.snoozeCount &&
           other.snoozeDurationMinutes == this.snoozeDurationMinutes &&
           other.soundName == this.soundName &&
+          other.mathLevel == this.mathLevel &&
+          other.mathProblemCount == this.mathProblemCount &&
           other.createdAt == this.createdAt);
 }
 
@@ -12696,6 +12804,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
   final Value<int> snoozeCount;
   final Value<int> snoozeDurationMinutes;
   final Value<String> soundName;
+  final Value<int> mathLevel;
+  final Value<int> mathProblemCount;
   final Value<DateTime> createdAt;
   final Value<int> rowid;
   const AlarmsCompanion({
@@ -12709,6 +12819,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.snoozeCount = const Value.absent(),
     this.snoozeDurationMinutes = const Value.absent(),
     this.soundName = const Value.absent(),
+    this.mathLevel = const Value.absent(),
+    this.mathProblemCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
@@ -12723,6 +12835,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     this.snoozeCount = const Value.absent(),
     this.snoozeDurationMinutes = const Value.absent(),
     this.soundName = const Value.absent(),
+    this.mathLevel = const Value.absent(),
+    this.mathProblemCount = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.rowid = const Value.absent(),
   })  : id = Value(id),
@@ -12739,6 +12853,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     Expression<int>? snoozeCount,
     Expression<int>? snoozeDurationMinutes,
     Expression<String>? soundName,
+    Expression<int>? mathLevel,
+    Expression<int>? mathProblemCount,
     Expression<DateTime>? createdAt,
     Expression<int>? rowid,
   }) {
@@ -12754,6 +12870,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       if (snoozeDurationMinutes != null)
         'snooze_duration_minutes': snoozeDurationMinutes,
       if (soundName != null) 'sound_name': soundName,
+      if (mathLevel != null) 'math_level': mathLevel,
+      if (mathProblemCount != null) 'math_problem_count': mathProblemCount,
       if (createdAt != null) 'created_at': createdAt,
       if (rowid != null) 'rowid': rowid,
     });
@@ -12770,6 +12888,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       Value<int>? snoozeCount,
       Value<int>? snoozeDurationMinutes,
       Value<String>? soundName,
+      Value<int>? mathLevel,
+      Value<int>? mathProblemCount,
       Value<DateTime>? createdAt,
       Value<int>? rowid}) {
     return AlarmsCompanion(
@@ -12784,6 +12904,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
       snoozeDurationMinutes:
           snoozeDurationMinutes ?? this.snoozeDurationMinutes,
       soundName: soundName ?? this.soundName,
+      mathLevel: mathLevel ?? this.mathLevel,
+      mathProblemCount: mathProblemCount ?? this.mathProblemCount,
       createdAt: createdAt ?? this.createdAt,
       rowid: rowid ?? this.rowid,
     );
@@ -12823,6 +12945,12 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
     if (soundName.present) {
       map['sound_name'] = Variable<String>(soundName.value);
     }
+    if (mathLevel.present) {
+      map['math_level'] = Variable<int>(mathLevel.value);
+    }
+    if (mathProblemCount.present) {
+      map['math_problem_count'] = Variable<int>(mathProblemCount.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -12845,6 +12973,8 @@ class AlarmsCompanion extends UpdateCompanion<Alarm> {
           ..write('snoozeCount: $snoozeCount, ')
           ..write('snoozeDurationMinutes: $snoozeDurationMinutes, ')
           ..write('soundName: $soundName, ')
+          ..write('mathLevel: $mathLevel, ')
+          ..write('mathProblemCount: $mathProblemCount, ')
           ..write('createdAt: $createdAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
@@ -31094,6 +31224,7 @@ typedef $$TasksTableCreateCompanionBuilder = TasksCompanion Function({
   Value<bool> isImportant,
   Value<DateTime?> dueDate,
   Value<DateTime?> dueTime,
+  Value<int?> reminderMinutesBefore,
   Value<bool> isCompleted,
   Value<DateTime?> completedAt,
   Value<String?> recurringConfigId,
@@ -31113,6 +31244,7 @@ typedef $$TasksTableUpdateCompanionBuilder = TasksCompanion Function({
   Value<bool> isImportant,
   Value<DateTime?> dueDate,
   Value<DateTime?> dueTime,
+  Value<int?> reminderMinutesBefore,
   Value<bool> isCompleted,
   Value<DateTime?> completedAt,
   Value<String?> recurringConfigId,
@@ -31190,6 +31322,10 @@ class $$TasksTableFilterComposer extends Composer<_$AppDatabase, $TasksTable> {
 
   ColumnFilters<DateTime> get dueTime => $composableBuilder(
       column: $table.dueTime, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get reminderMinutesBefore => $composableBuilder(
+      column: $table.reminderMinutesBefore,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<bool> get isCompleted => $composableBuilder(
       column: $table.isCompleted, builder: (column) => ColumnFilters(column));
@@ -31293,6 +31429,10 @@ class $$TasksTableOrderingComposer
   ColumnOrderings<DateTime> get dueTime => $composableBuilder(
       column: $table.dueTime, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get reminderMinutesBefore => $composableBuilder(
+      column: $table.reminderMinutesBefore,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<bool> get isCompleted => $composableBuilder(
       column: $table.isCompleted, builder: (column) => ColumnOrderings(column));
 
@@ -31352,6 +31492,9 @@ class $$TasksTableAnnotationComposer
 
   GeneratedColumn<DateTime> get dueTime =>
       $composableBuilder(column: $table.dueTime, builder: (column) => column);
+
+  GeneratedColumn<int> get reminderMinutesBefore => $composableBuilder(
+      column: $table.reminderMinutesBefore, builder: (column) => column);
 
   GeneratedColumn<bool> get isCompleted => $composableBuilder(
       column: $table.isCompleted, builder: (column) => column);
@@ -31449,6 +31592,7 @@ class $$TasksTableTableManager extends RootTableManager<
             Value<bool> isImportant = const Value.absent(),
             Value<DateTime?> dueDate = const Value.absent(),
             Value<DateTime?> dueTime = const Value.absent(),
+            Value<int?> reminderMinutesBefore = const Value.absent(),
             Value<bool> isCompleted = const Value.absent(),
             Value<DateTime?> completedAt = const Value.absent(),
             Value<String?> recurringConfigId = const Value.absent(),
@@ -31468,6 +31612,7 @@ class $$TasksTableTableManager extends RootTableManager<
             isImportant: isImportant,
             dueDate: dueDate,
             dueTime: dueTime,
+            reminderMinutesBefore: reminderMinutesBefore,
             isCompleted: isCompleted,
             completedAt: completedAt,
             recurringConfigId: recurringConfigId,
@@ -31487,6 +31632,7 @@ class $$TasksTableTableManager extends RootTableManager<
             Value<bool> isImportant = const Value.absent(),
             Value<DateTime?> dueDate = const Value.absent(),
             Value<DateTime?> dueTime = const Value.absent(),
+            Value<int?> reminderMinutesBefore = const Value.absent(),
             Value<bool> isCompleted = const Value.absent(),
             Value<DateTime?> completedAt = const Value.absent(),
             Value<String?> recurringConfigId = const Value.absent(),
@@ -31506,6 +31652,7 @@ class $$TasksTableTableManager extends RootTableManager<
             isImportant: isImportant,
             dueDate: dueDate,
             dueTime: dueTime,
+            reminderMinutesBefore: reminderMinutesBefore,
             isCompleted: isCompleted,
             completedAt: completedAt,
             recurringConfigId: recurringConfigId,
@@ -37020,6 +37167,8 @@ typedef $$AlarmsTableCreateCompanionBuilder = AlarmsCompanion Function({
   Value<int> snoozeCount,
   Value<int> snoozeDurationMinutes,
   Value<String> soundName,
+  Value<int> mathLevel,
+  Value<int> mathProblemCount,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -37034,6 +37183,8 @@ typedef $$AlarmsTableUpdateCompanionBuilder = AlarmsCompanion Function({
   Value<int> snoozeCount,
   Value<int> snoozeDurationMinutes,
   Value<String> soundName,
+  Value<int> mathLevel,
+  Value<int> mathProblemCount,
   Value<DateTime> createdAt,
   Value<int> rowid,
 });
@@ -37077,6 +37228,13 @@ class $$AlarmsTableFilterComposer
 
   ColumnFilters<String> get soundName => $composableBuilder(
       column: $table.soundName, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get mathLevel => $composableBuilder(
+      column: $table.mathLevel, builder: (column) => ColumnFilters(column));
+
+  ColumnFilters<int> get mathProblemCount => $composableBuilder(
+      column: $table.mathProblemCount,
+      builder: (column) => ColumnFilters(column));
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnFilters(column));
@@ -37122,6 +37280,13 @@ class $$AlarmsTableOrderingComposer
   ColumnOrderings<String> get soundName => $composableBuilder(
       column: $table.soundName, builder: (column) => ColumnOrderings(column));
 
+  ColumnOrderings<int> get mathLevel => $composableBuilder(
+      column: $table.mathLevel, builder: (column) => ColumnOrderings(column));
+
+  ColumnOrderings<int> get mathProblemCount => $composableBuilder(
+      column: $table.mathProblemCount,
+      builder: (column) => ColumnOrderings(column));
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
       column: $table.createdAt, builder: (column) => ColumnOrderings(column));
 }
@@ -37165,6 +37330,12 @@ class $$AlarmsTableAnnotationComposer
   GeneratedColumn<String> get soundName =>
       $composableBuilder(column: $table.soundName, builder: (column) => column);
 
+  GeneratedColumn<int> get mathLevel =>
+      $composableBuilder(column: $table.mathLevel, builder: (column) => column);
+
+  GeneratedColumn<int> get mathProblemCount => $composableBuilder(
+      column: $table.mathProblemCount, builder: (column) => column);
+
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
 }
@@ -37202,6 +37373,8 @@ class $$AlarmsTableTableManager extends RootTableManager<
             Value<int> snoozeCount = const Value.absent(),
             Value<int> snoozeDurationMinutes = const Value.absent(),
             Value<String> soundName = const Value.absent(),
+            Value<int> mathLevel = const Value.absent(),
+            Value<int> mathProblemCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -37216,6 +37389,8 @@ class $$AlarmsTableTableManager extends RootTableManager<
             snoozeCount: snoozeCount,
             snoozeDurationMinutes: snoozeDurationMinutes,
             soundName: soundName,
+            mathLevel: mathLevel,
+            mathProblemCount: mathProblemCount,
             createdAt: createdAt,
             rowid: rowid,
           ),
@@ -37230,6 +37405,8 @@ class $$AlarmsTableTableManager extends RootTableManager<
             Value<int> snoozeCount = const Value.absent(),
             Value<int> snoozeDurationMinutes = const Value.absent(),
             Value<String> soundName = const Value.absent(),
+            Value<int> mathLevel = const Value.absent(),
+            Value<int> mathProblemCount = const Value.absent(),
             Value<DateTime> createdAt = const Value.absent(),
             Value<int> rowid = const Value.absent(),
           }) =>
@@ -37244,6 +37421,8 @@ class $$AlarmsTableTableManager extends RootTableManager<
             snoozeCount: snoozeCount,
             snoozeDurationMinutes: snoozeDurationMinutes,
             soundName: soundName,
+            mathLevel: mathLevel,
+            mathProblemCount: mathProblemCount,
             createdAt: createdAt,
             rowid: rowid,
           ),

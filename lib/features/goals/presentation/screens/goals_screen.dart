@@ -52,6 +52,12 @@ class _GoalsScreenState extends ConsumerState<GoalsScreen> with TickerProviderSt
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: context.canPop()
+            ? IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: Text('Goals', style: AppTypography.titleLarge(onBg)),
         actions: [
           IconButton(

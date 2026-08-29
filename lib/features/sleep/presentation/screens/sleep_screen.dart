@@ -2,6 +2,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import 'package:hybrid_tracker/core/theme/app_colors.dart';
 import 'package:hybrid_tracker/core/theme/app_spacing.dart';
@@ -11,6 +12,7 @@ import 'package:hybrid_tracker/features/sleep/domain/providers/sleep_providers.d
 import 'package:hybrid_tracker/features/sleep/presentation/screens/alarm_screen.dart';
 import 'package:hybrid_tracker/features/sleep/presentation/screens/log_sleep_screen.dart';
 import 'package:hybrid_tracker/features/sleep/presentation/widgets/alarm_card_widget.dart';
+import 'package:hybrid_tracker/shared/widgets/ryve_bottom_nav.dart';
 import 'package:hybrid_tracker/shared/widgets/skeleton_widget.dart';
 
 class SleepScreen extends ConsumerWidget {
@@ -29,11 +31,22 @@ class SleepScreen extends ConsumerWidget {
     final recentLogsAsync = ref.watch(recentSleepLogsProvider);
     final alarmsAsync = ref.watch(alarmsProvider);
 
-    return Scaffold(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: context.canPop()
+            ? IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: Text('Sleep', style: AppTypography.titleLarge(onBg)),
         actions: [
           IconButton(
@@ -123,6 +136,20 @@ class SleepScreen extends ConsumerWidget {
             const SizedBox(height: AppSpacing.x4l),
           ],
         ),
+      ),
+      bottomNavigationBar: RyveBottomNav(
+        currentIndex: 3,
+        onTap: (i) {
+          switch (i) {
+            case 0: context.go('/'); break;
+            case 1: context.go('/tasks'); break;
+            case 2: context.go('/alarms'); break;
+            case 3: break;
+            case 4: context.go('/focus'); break;
+            case 5: context.go('/profile'); break;
+          }
+        },
+      ),
       ),
     );
   }

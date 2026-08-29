@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:hybrid_tracker/core/services/notification_service.dart';
 import 'package:hybrid_tracker/core/theme/app_colors.dart';
 import 'package:hybrid_tracker/core/theme/app_spacing.dart';
 import 'package:hybrid_tracker/core/theme/app_typography.dart';
@@ -25,6 +26,9 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
   late AlarmMissionType _mission;
   late int _snoozeCount;
   late int _snoozeDuration;
+  late String _soundName;
+  late int _mathLevel;
+  late int _mathProblemCount;
   bool _saving = false;
   bool _timeAnimating = false;
 
@@ -43,6 +47,9 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
       _mission = existing.missionType;
       _snoozeCount = existing.snoozeCount;
       _snoozeDuration = existing.snoozeDurationMinutes;
+      _soundName = existing.soundName;
+      _mathLevel = existing.mathLevel;
+      _mathProblemCount = existing.mathProblemCount;
     } else {
       _time = const TimeOfDay(hour: 6, minute: 0);
       _labelCtrl = TextEditingController(text: 'Wake Up');
@@ -50,6 +57,9 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
       _mission = AlarmMissionType.none;
       _snoozeCount = 3;
       _snoozeDuration = 5;
+      _soundName = 'default';
+      _mathLevel = 1;
+      _mathProblemCount = 3;
     }
   }
 
@@ -108,6 +118,9 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
             missionType: _mission,
             snoozeCount: _snoozeCount,
             snoozeDurationMinutes: _snoozeDuration,
+            soundName: _soundName,
+            mathLevel: _mathLevel,
+            mathProblemCount: _mathProblemCount,
           ),
         );
       } else {
@@ -124,6 +137,9 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
             missionType: _mission,
             snoozeCount: _snoozeCount,
             snoozeDurationMinutes: _snoozeDuration,
+            soundName: _soundName,
+            mathLevel: _mathLevel,
+            mathProblemCount: _mathProblemCount,
             createdAt: now,
           ),
         );
@@ -167,6 +183,10 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           isEdit ? 'Edit Alarm' : 'New Alarm',
           style: AppTypography.titleLarge(onBg),
@@ -255,9 +275,29 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
             ),
             const SizedBox(height: AppSpacing.x3l),
             _SectionLabel(
-              text: 'Wake-Up Mission',
+              text: 'Alarm Sound',
               muted: muted,
               index: 5,
+              disableAnims: disableAnims,
+            ),
+            const SizedBox(height: AppSpacing.md),
+            _SoundSelector(
+              selected: _soundName,
+              onSelect: (s) => setState(() => _soundName = s),
+              primary: primary,
+              onSurface: onSurface,
+              muted: muted,
+              surface: surface,
+              surfaceBright: surfaceBright,
+              isDark: isDark,
+              index: 5,
+              disableAnims: disableAnims,
+            ),
+            const SizedBox(height: AppSpacing.x3l),
+            _SectionLabel(
+              text: 'Wake-Up Mission',
+              muted: muted,
+              index: 6,
               disableAnims: disableAnims,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -273,11 +313,35 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
               index: 6,
               disableAnims: disableAnims,
             ),
+            if (_mission == AlarmMissionType.math) ...[
+              const SizedBox(height: AppSpacing.x3l),
+              _SectionLabel(
+                text: 'Math Settings',
+                muted: muted,
+                index: 7,
+                disableAnims: disableAnims,
+              ),
+              const SizedBox(height: AppSpacing.md),
+              _MathSettings(
+                mathLevel: _mathLevel,
+                mathProblemCount: _mathProblemCount,
+                onLevelChange: (v) => setState(() => _mathLevel = v),
+                onCountChange: (v) => setState(() => _mathProblemCount = v),
+                onSurface: onSurface,
+                muted: muted,
+                primary: primary,
+                surface: surface,
+                surfaceBright: surfaceBright,
+                isDark: isDark,
+                index: 7,
+                disableAnims: disableAnims,
+              ),
+            ],
             const SizedBox(height: AppSpacing.x3l),
             _SectionLabel(
               text: 'Snooze Settings',
               muted: muted,
-              index: 7,
+              index: 8,
               disableAnims: disableAnims,
             ),
             const SizedBox(height: AppSpacing.md),
@@ -292,7 +356,7 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
               surface: surface,
               surfaceBright: surfaceBright,
               isDark: isDark,
-              index: 8,
+              index: 9,
               disableAnims: disableAnims,
             ),
             const SizedBox(height: AppSpacing.x3l),
@@ -301,7 +365,7 @@ class _AlarmScreenState extends ConsumerState<AlarmScreen> {
               onSave: _save,
               primary: primary,
               onPrimary: onPrimary,
-              index: 9,
+              index: 10,
               disableAnims: disableAnims,
             ),
           ],
@@ -758,6 +822,218 @@ class _StepperRow extends StatelessWidget {
           padding: EdgeInsets.zero,
         ),
       ],
+    );
+  }
+}
+
+class _SoundSelector extends StatelessWidget {
+  const _SoundSelector({
+    required this.selected,
+    required this.onSelect,
+    required this.primary,
+    required this.onSurface,
+    required this.muted,
+    required this.surface,
+    required this.surfaceBright,
+    required this.isDark,
+    required this.index,
+    required this.disableAnims,
+  });
+  final String selected;
+  final ValueChanged<String> onSelect;
+  final Color primary;
+  final Color onSurface;
+  final Color muted;
+  final Color surface;
+  final Color surfaceBright;
+  final bool isDark;
+  final int index;
+  final bool disableAnims;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content = Wrap(
+      spacing: AppSpacing.sm,
+      runSpacing: AppSpacing.sm,
+      children: NotificationService.alarmSounds.map((sound) {
+        final (id, label) = sound;
+        final isSelected = selected == id;
+        return GestureDetector(
+          onTap: () => onSelect(id),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 180),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.lg,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: isSelected ? primary.withValues(alpha: 0.12) : surface,
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+              border: Border.all(
+                color: isSelected ? primary : surfaceBright,
+                width: isSelected ? 2 : 1,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.music_note_rounded,
+                  size: 14,
+                  color: isSelected ? primary : muted,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: AppTypography.labelMedium(isSelected ? primary : muted),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+    if (!disableAnims) {
+      content = content
+          .animate(delay: (index * 60).ms)
+          .fadeIn(duration: 220.ms, curve: Curves.easeOut)
+          .slideY(begin: 0.06, end: 0, duration: 220.ms);
+    }
+    return content;
+  }
+}
+
+class _MathSettings extends StatelessWidget {
+  const _MathSettings({
+    required this.mathLevel,
+    required this.mathProblemCount,
+    required this.onLevelChange,
+    required this.onCountChange,
+    required this.onSurface,
+    required this.muted,
+    required this.primary,
+    required this.surface,
+    required this.surfaceBright,
+    required this.isDark,
+    required this.index,
+    required this.disableAnims,
+  });
+  final int mathLevel;
+  final int mathProblemCount;
+  final ValueChanged<int> onLevelChange;
+  final ValueChanged<int> onCountChange;
+  final Color onSurface;
+  final Color muted;
+  final Color primary;
+  final Color surface;
+  final Color surfaceBright;
+  final bool isDark;
+  final int index;
+  final bool disableAnims;
+
+  @override
+  Widget build(BuildContext context) {
+    Widget content = Container(
+      padding: const EdgeInsets.all(AppSpacing.lg),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(AppRadius.md),
+        border: isDark ? Border.all(color: surfaceBright, width: 1) : null,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Difficulty', style: AppTypography.bodyMedium(muted)),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              _LevelChip(
+                label: 'Easy  1-digit',
+                selected: mathLevel == 1,
+                onTap: () => onLevelChange(1),
+                primary: primary,
+                muted: muted,
+                surface: surface,
+                surfaceBright: surfaceBright,
+              ),
+              const SizedBox(width: AppSpacing.sm),
+              _LevelChip(
+                label: 'Medium  2-digit',
+                selected: mathLevel == 2,
+                onTap: () => onLevelChange(2),
+                primary: primary,
+                muted: muted,
+                surface: surface,
+                surfaceBright: surfaceBright,
+              ),
+            ],
+          ),
+          const Divider(height: AppSpacing.x3l),
+          _StepperRow(
+            label: 'Problems to solve',
+            value: mathProblemCount,
+            min: 1,
+            max: 10,
+            onChanged: onCountChange,
+            suffix: 'problems',
+            onSurface: onSurface,
+            muted: muted,
+            primary: primary,
+          ),
+        ],
+      ),
+    );
+    if (!disableAnims) {
+      content = content
+          .animate(delay: (index * 60).ms)
+          .fadeIn(duration: 220.ms, curve: Curves.easeOut)
+          .slideY(begin: 0.06, end: 0, duration: 220.ms);
+    }
+    return content;
+  }
+}
+
+class _LevelChip extends StatelessWidget {
+  const _LevelChip({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+    required this.primary,
+    required this.muted,
+    required this.surface,
+    required this.surfaceBright,
+  });
+  final String label;
+  final bool selected;
+  final VoidCallback onTap;
+  final Color primary;
+  final Color muted;
+  final Color surface;
+  final Color surfaceBright;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(
+          horizontal: AppSpacing.md,
+          vertical: AppSpacing.xs,
+        ),
+        decoration: BoxDecoration(
+          color: selected ? primary.withValues(alpha: 0.12) : surface,
+          borderRadius: BorderRadius.circular(AppRadius.xl),
+          border: Border.all(
+            color: selected ? primary : surfaceBright,
+            width: selected ? 2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: AppTypography.labelSmall(selected ? primary : muted),
+        ),
+      ),
     );
   }
 }

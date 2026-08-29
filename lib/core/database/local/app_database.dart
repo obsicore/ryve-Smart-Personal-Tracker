@@ -5,9 +5,8 @@ import 'package:drift/native.dart';
 import 'package:flutter/foundation.dart' show visibleForTesting;
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'package:sqlite3/open.dart';
-
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 import 'secure_db_key.dart';
 
 import 'tables/auth_tables.dart';
@@ -128,7 +127,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 10;
 
   static QueryExecutor _openConnection() {
     return LazyDatabase(() async {
@@ -138,22 +137,18 @@ class AppDatabase extends _$AppDatabase {
 
       return NativeDatabase.createInBackground(
         file,
-        setup: (db) {
-          db.execute("PRAGMA key = '$passphrase';");
-          try {
-            // Forces a real read — throws if the key is wrong or the file
-            // predates encryption (still plaintext).
-            db.select('SELECT count(*) FROM sqlite_master;');
-          } catch (_) {
-            // Legacy pre-encryption install: rekey the plaintext file in
-            // place, the standard SQLCipher migration path.
-            db.execute("PRAGMA key = '';");
-            db.execute("PRAGMA rekey = '$passphrase';");
-          }
-        },
         isolateSetup: () async {
           if (Platform.isAndroid) {
             open.overrideFor(OperatingSystem.android, openCipherOnAndroid);
+          }
+        },
+        setup: (db) {
+          db.execute("PRAGMA key = '$passphrase';");
+          try {
+            db.select('SELECT count(*) FROM sqlite_master;');
+          } catch (_) {
+            db.execute("PRAGMA key = '';");
+            db.execute("PRAGMA rekey = '$passphrase';");
           }
         },
       );
@@ -248,6 +243,13 @@ class AppDatabase extends _$AppDatabase {
           }
           if (from < 8) {
             await m.createTable(locationTriggers);
+          }
+          if (from < 9) {
+            await m.addColumn(tasks, tasks.reminderMinutesBefore);
+          }
+          if (from < 10) {
+            await m.addColumn(alarms, alarms.mathLevel);
+            await m.addColumn(alarms, alarms.mathProblemCount);
           }
         },
       );

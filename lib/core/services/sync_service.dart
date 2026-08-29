@@ -2,12 +2,10 @@ import 'dart:async';
 
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:meta/meta.dart';
-import 'package:postgres/postgres.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'package:hybrid_tracker/core/database/local/app_database.dart';
-import 'package:hybrid_tracker/core/database/remote/neon_config.dart';
+import 'package:hybrid_tracker/core/database/remote/neon_http_service.dart';
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
 
 part 'sync_service.g.dart';
@@ -34,33 +32,9 @@ class SyncStatus {
 // last-write-wins comparison.
 class SyncService {
   final AppDatabase _db;
-  Connection? _conn;
+  final _neon = NeonHttpService();
 
   SyncService(this._db);
-
-  /// Exposes the live Neon connection for test/verification scripts that
-  /// need to assert against remote state directly (see bin/verify_sync.dart).
-  @visibleForTesting
-  Future<Connection> debugConnection() => _connection();
-
-  Future<Connection> _connection() async {
-    if (_conn != null && _conn!.isOpen) return _conn!;
-    _conn = await Connection.open(
-      Endpoint(
-        host: neonHost,
-        database: neonDatabase,
-        username: neonUser,
-        password: neonPassword,
-      ),
-      settings: const ConnectionSettings(sslMode: SslMode.require),
-    );
-    return _conn!;
-  }
-
-  Future<void> close() async {
-    await _conn?.close();
-    _conn = null;
-  }
 
   Future<DateTime?> lastSyncedAt(String entityTable) async {
     final row = await (_db.select(_db.syncMeta)
@@ -78,30 +52,30 @@ class SyncService {
         );
   }
 
-  /// Pushes every locally pending (`sync_status = 0`) task/habit row to
-  /// Neon, last-write-wins on `updated_at` conflict, then marks them synced.
+  /// Pushes every locally pending (`sync_status = 0`) row to Neon,
+  /// last-write-wins on `updated_at` conflict, then marks them synced.
   Future<void> flush() async {
-    final conn = await _connection();
-    await _flushTasks(conn);
-    await _flushHabits(conn);
-    await _flushCalendarEvents(conn);
-    await _flushFocusSessions(conn);
-    await _flushGoals(conn);
-    await _flushJournalEntries(conn);
-    await _flushGratitudeLogs(conn);
-    await _flushSleepLogs(conn);
-    await _flushMoodLogs(conn);
-    await _flushWaterLogs(conn);
-    await _flushWorkoutLogs(conn);
+    await _flushTasks();
+    await _flushHabits();
+    await _flushHabitLogs();
+    await _flushCalendarEvents();
+    await _flushFocusSessions();
+    await _flushGoals();
+    await _flushJournalEntries();
+    await _flushGratitudeLogs();
+    await _flushSleepLogs();
+    await _flushMoodLogs();
+    await _flushWaterLogs();
+    await _flushWorkoutLogs();
+    await _flushAlarms();
   }
 
-  Future<void> _flushTasks(Connection conn) async {
+  Future<void> _flushTasks() async {
     final pending =
         await (_db.select(_db.tasks)..where((t) => t.syncStatus.equals(0)))
             .get();
     for (final t in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO tasks (id, user_id, title, description, priority, is_urgent,
             is_important, due_date, due_time, is_completed, completed_at,
             recurring_config_id, estimated_minutes, created_at, updated_at, sync_status)
@@ -116,38 +90,35 @@ class SyncService {
             completed_at = EXCLUDED.completed_at, estimated_minutes = EXCLUDED.estimated_minutes,
             updated_at = EXCLUDED.updated_at, sync_status = 1
           WHERE tasks.updated_at IS NULL OR EXCLUDED.updated_at >= tasks.updated_at
-        '''),
-        parameters: {
-          'id': t.id,
-          'userId': t.userId,
-          'title': t.title,
-          'description': t.description,
-          'priority': t.priority,
-          'isUrgent': t.isUrgent,
-          'isImportant': t.isImportant,
-          'dueDate': t.dueDate,
-          'dueTime': t.dueTime,
-          'isCompleted': t.isCompleted,
-          'completedAt': t.completedAt,
-          'recurringConfigId': t.recurringConfigId,
-          'estimatedMinutes': t.estimatedMinutes,
-          'createdAt': t.createdAt,
-          'updatedAt': t.updatedAt,
-        },
-      );
+        ''', {
+        'id': t.id,
+        'userId': t.userId,
+        'title': t.title,
+        'description': t.description,
+        'priority': t.priority,
+        'isUrgent': t.isUrgent,
+        'isImportant': t.isImportant,
+        'dueDate': t.dueDate,
+        'dueTime': t.dueTime,
+        'isCompleted': t.isCompleted,
+        'completedAt': t.completedAt,
+        'recurringConfigId': t.recurringConfigId,
+        'estimatedMinutes': t.estimatedMinutes,
+        'createdAt': t.createdAt,
+        'updatedAt': t.updatedAt,
+      });
       await (_db.update(_db.tasks)..where((row) => row.id.equals(t.id)))
           .write(const TasksCompanion(syncStatus: Value(1)));
     }
     await _markSynced('tasks');
   }
 
-  Future<void> _flushHabits(Connection conn) async {
+  Future<void> _flushHabits() async {
     final pending =
         await (_db.select(_db.habits)..where((t) => t.syncStatus.equals(0)))
             .get();
     for (final h in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO habits (id, user_id, name, icon_emoji, category, frequency,
             target_value, unit, chain_next_id, is_active, created_at, updated_at, sync_status)
           VALUES (@id, @userId, @name, @iconEmoji, @category, @frequency,
@@ -158,35 +129,32 @@ class SyncService {
             unit = EXCLUDED.unit, chain_next_id = EXCLUDED.chain_next_id,
             is_active = EXCLUDED.is_active, updated_at = EXCLUDED.updated_at, sync_status = 1
           WHERE habits.updated_at IS NULL OR EXCLUDED.updated_at >= habits.updated_at
-        '''),
-        parameters: {
-          'id': h.id,
-          'userId': h.userId,
-          'name': h.name,
-          'iconEmoji': h.iconEmoji,
-          'category': h.category,
-          'frequency': h.frequency,
-          'targetValue': h.targetValue,
-          'unit': h.unit,
-          'chainNextId': h.chainNextId,
-          'isActive': h.isActive,
-          'createdAt': h.createdAt,
-          'updatedAt': h.updatedAt,
-        },
-      );
+        ''', {
+        'id': h.id,
+        'userId': h.userId,
+        'name': h.name,
+        'iconEmoji': h.iconEmoji,
+        'category': h.category,
+        'frequency': h.frequency,
+        'targetValue': h.targetValue,
+        'unit': h.unit,
+        'chainNextId': h.chainNextId,
+        'isActive': h.isActive,
+        'createdAt': h.createdAt,
+        'updatedAt': h.updatedAt,
+      });
       await (_db.update(_db.habits)..where((row) => row.id.equals(h.id)))
           .write(const HabitsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('habits');
   }
 
-  Future<void> _flushCalendarEvents(Connection conn) async {
+  Future<void> _flushCalendarEvents() async {
     final pending = await (_db.select(_db.calendarEvents)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final e in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO calendar_events (id, user_id, title, description, location,
             start_time, end_time, is_all_day, color, recurrence_rule, linked_task_id,
             reminder_minutes, created_at, updated_at, sync_status)
@@ -200,37 +168,34 @@ class SyncService {
             linked_task_id = EXCLUDED.linked_task_id, reminder_minutes = EXCLUDED.reminder_minutes,
             updated_at = EXCLUDED.updated_at, sync_status = 1
           WHERE calendar_events.updated_at IS NULL OR EXCLUDED.updated_at >= calendar_events.updated_at
-        '''),
-        parameters: {
-          'id': e.id,
-          'userId': e.userId,
-          'title': e.title,
-          'description': e.description,
-          'location': e.location,
-          'startTime': e.startTime,
-          'endTime': e.endTime,
-          'isAllDay': e.isAllDay,
-          'color': e.color,
-          'recurrenceRule': e.recurrenceRule,
-          'linkedTaskId': e.linkedTaskId,
-          'reminderMinutes': e.reminderMinutes,
-          'createdAt': e.createdAt,
-          'updatedAt': e.updatedAt,
-        },
-      );
+        ''', {
+        'id': e.id,
+        'userId': e.userId,
+        'title': e.title,
+        'description': e.description,
+        'location': e.location,
+        'startTime': e.startTime,
+        'endTime': e.endTime,
+        'isAllDay': e.isAllDay,
+        'color': e.color,
+        'recurrenceRule': e.recurrenceRule,
+        'linkedTaskId': e.linkedTaskId,
+        'reminderMinutes': e.reminderMinutes,
+        'createdAt': e.createdAt,
+        'updatedAt': e.updatedAt,
+      });
       await (_db.update(_db.calendarEvents)..where((row) => row.id.equals(e.id)))
           .write(const CalendarEventsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('calendar_events');
   }
 
-  Future<void> _flushFocusSessions(Connection conn) async {
+  Future<void> _flushFocusSessions() async {
     final pending = await (_db.select(_db.focusSessions)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final s in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO focus_sessions (id, user_id, duration_minutes, session_type,
             was_completed, linked_task_id, started_at, ended_at, sync_status)
           VALUES (@id, @userId, @durationMinutes, @sessionType, @wasCompleted,
@@ -239,30 +204,27 @@ class SyncService {
             duration_minutes = EXCLUDED.duration_minutes, session_type = EXCLUDED.session_type,
             was_completed = EXCLUDED.was_completed, linked_task_id = EXCLUDED.linked_task_id,
             ended_at = EXCLUDED.ended_at, sync_status = 1
-        '''),
-        parameters: {
-          'id': s.id,
-          'userId': s.userId,
-          'durationMinutes': s.durationMinutes,
-          'sessionType': s.sessionType,
-          'wasCompleted': s.wasCompleted,
-          'linkedTaskId': s.linkedTaskId,
-          'startedAt': s.startedAt,
-          'endedAt': s.endedAt,
-        },
-      );
+        ''', {
+        'id': s.id,
+        'userId': s.userId,
+        'durationMinutes': s.durationMinutes,
+        'sessionType': s.sessionType,
+        'wasCompleted': s.wasCompleted,
+        'linkedTaskId': s.linkedTaskId,
+        'startedAt': s.startedAt,
+        'endedAt': s.endedAt,
+      });
       await (_db.update(_db.focusSessions)..where((row) => row.id.equals(s.id)))
           .write(const FocusSessionsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('focus_sessions');
   }
 
-  Future<void> _flushGoals(Connection conn) async {
+  Future<void> _flushGoals() async {
     final pending =
         await (_db.select(_db.goals)..where((t) => t.syncStatus.equals(0))).get();
     for (final g in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO goals (id, user_id, title, description, life_area, metric_type,
             target_value, current_value, unit, target_date, priority, status, icon,
             color_hex, visibility, completed_at, created_at, updated_at, deleted_at, sync_status)
@@ -278,42 +240,39 @@ class SyncService {
             completed_at = EXCLUDED.completed_at, updated_at = EXCLUDED.updated_at,
             deleted_at = EXCLUDED.deleted_at, sync_status = 1
           WHERE goals.updated_at IS NULL OR EXCLUDED.updated_at >= goals.updated_at
-        '''),
-        parameters: {
-          'id': g.id,
-          'userId': g.userId,
-          'title': g.title,
-          'description': g.description,
-          'lifeArea': g.lifeArea,
-          'metricType': g.metricType,
-          'targetValue': g.targetValue,
-          'currentValue': g.currentValue,
-          'unit': g.unit,
-          'targetDate': g.targetDate,
-          'priority': g.priority,
-          'status': g.status,
-          'icon': g.icon,
-          'colorHex': g.colorHex,
-          'visibility': g.visibility,
-          'completedAt': g.completedAt,
-          'createdAt': g.createdAt,
-          'updatedAt': g.updatedAt,
-          'deletedAt': g.deletedAt,
-        },
-      );
+        ''', {
+        'id': g.id,
+        'userId': g.userId,
+        'title': g.title,
+        'description': g.description,
+        'lifeArea': g.lifeArea,
+        'metricType': g.metricType,
+        'targetValue': g.targetValue,
+        'currentValue': g.currentValue,
+        'unit': g.unit,
+        'targetDate': g.targetDate,
+        'priority': g.priority,
+        'status': g.status,
+        'icon': g.icon,
+        'colorHex': g.colorHex,
+        'visibility': g.visibility,
+        'completedAt': g.completedAt,
+        'createdAt': g.createdAt,
+        'updatedAt': g.updatedAt,
+        'deletedAt': g.deletedAt,
+      });
       await (_db.update(_db.goals)..where((row) => row.id.equals(g.id)))
           .write(const GoalsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('goals');
   }
 
-  Future<void> _flushJournalEntries(Connection conn) async {
+  Future<void> _flushJournalEntries() async {
     final pending = await (_db.select(_db.journalEntries)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final j in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO journal_entries (id, user_id, entry_date, title, content, mood_tag,
             is_private, word_count, created_at, updated_at, sync_status)
           VALUES (@id, @userId, @entryDate, @title, @content, @moodTag, @isPrivate,
@@ -323,91 +282,82 @@ class SyncService {
             is_private = EXCLUDED.is_private, word_count = EXCLUDED.word_count,
             updated_at = EXCLUDED.updated_at, sync_status = 1
           WHERE journal_entries.updated_at IS NULL OR EXCLUDED.updated_at >= journal_entries.updated_at
-        '''),
-        parameters: {
-          'id': j.id,
-          'userId': j.userId,
-          'entryDate': j.entryDate,
-          'title': j.title,
-          'content': j.content,
-          'moodTag': j.moodTag,
-          'isPrivate': j.isPrivate,
-          'wordCount': j.wordCount,
-          'createdAt': j.createdAt,
-          'updatedAt': j.updatedAt,
-        },
-      );
+        ''', {
+        'id': j.id,
+        'userId': j.userId,
+        'entryDate': j.entryDate,
+        'title': j.title,
+        'content': j.content,
+        'moodTag': j.moodTag,
+        'isPrivate': j.isPrivate,
+        'wordCount': j.wordCount,
+        'createdAt': j.createdAt,
+        'updatedAt': j.updatedAt,
+      });
       await (_db.update(_db.journalEntries)..where((row) => row.id.equals(j.id)))
           .write(const JournalEntriesCompanion(syncStatus: Value(1)));
     }
     await _markSynced('journal_entries');
   }
 
-  Future<void> _flushGratitudeLogs(Connection conn) async {
+  Future<void> _flushGratitudeLogs() async {
     final pending = await (_db.select(_db.gratitudeLogs)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final g in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO gratitude_logs (id, user_id, log_date, item1, item2, item3, created_at, sync_status)
           VALUES (@id, @userId, @logDate, @item1, @item2, @item3, @createdAt, 1)
           ON CONFLICT (id) DO NOTHING
-        '''),
-        parameters: {
-          'id': g.id,
-          'userId': g.userId,
-          'logDate': g.logDate,
-          'item1': g.item1,
-          'item2': g.item2,
-          'item3': g.item3,
-          'createdAt': g.createdAt,
-        },
-      );
+        ''', {
+        'id': g.id,
+        'userId': g.userId,
+        'logDate': g.logDate,
+        'item1': g.item1,
+        'item2': g.item2,
+        'item3': g.item3,
+        'createdAt': g.createdAt,
+      });
       await (_db.update(_db.gratitudeLogs)..where((row) => row.id.equals(g.id)))
           .write(const GratitudeLogsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('gratitude_logs');
   }
 
-  Future<void> _flushSleepLogs(Connection conn) async {
+  Future<void> _flushSleepLogs() async {
     final pending = await (_db.select(_db.sleepLogs)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final s in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO sleep_logs (id, user_id, bedtime, wake_time, quality_rating,
             sleep_latency_minutes, had_nightmares, notes, sync_status, created_at)
           VALUES (@id, @userId, @bedtime, @wakeTime, @qualityRating, @sleepLatencyMinutes,
             @hadNightmares, @notes, 1, @createdAt)
           ON CONFLICT (id) DO NOTHING
-        '''),
-        parameters: {
-          'id': s.id,
-          'userId': s.userId,
-          'bedtime': s.bedtime,
-          'wakeTime': s.wakeTime,
-          'qualityRating': s.qualityRating,
-          'sleepLatencyMinutes': s.sleepLatencyMinutes,
-          'hadNightmares': s.hadNightmares,
-          'notes': s.notes,
-          'createdAt': s.createdAt,
-        },
-      );
+        ''', {
+        'id': s.id,
+        'userId': s.userId,
+        'bedtime': s.bedtime,
+        'wakeTime': s.wakeTime,
+        'qualityRating': s.qualityRating,
+        'sleepLatencyMinutes': s.sleepLatencyMinutes,
+        'hadNightmares': s.hadNightmares,
+        'notes': s.notes,
+        'createdAt': s.createdAt,
+      });
       await (_db.update(_db.sleepLogs)..where((row) => row.id.equals(s.id)))
           .write(const SleepLogsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('sleep_logs');
   }
 
-  Future<void> _flushMoodLogs(Connection conn) async {
+  Future<void> _flushMoodLogs() async {
     final pending = await (_db.select(_db.moodLogs)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final m in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO mood_logs (id, user_id, log_date, log_time, mood_score, energy_score,
             mood_tags, factors, note, created_at, updated_at, sync_status)
           VALUES (@id, @userId, @logDate, @logTime, @moodScore, @energyScore, @moodTags,
@@ -417,62 +367,56 @@ class SyncService {
             mood_tags = EXCLUDED.mood_tags, factors = EXCLUDED.factors, note = EXCLUDED.note,
             updated_at = EXCLUDED.updated_at, sync_status = 1
           WHERE mood_logs.updated_at IS NULL OR EXCLUDED.updated_at >= mood_logs.updated_at
-        '''),
-        parameters: {
-          'id': m.id,
-          'userId': m.userId,
-          'logDate': m.logDate,
-          'logTime': m.logTime,
-          'moodScore': m.moodScore,
-          'energyScore': m.energyScore,
-          'moodTags': m.moodTags,
-          'factors': m.factors,
-          'note': m.note,
-          'createdAt': m.createdAt,
-          'updatedAt': m.updatedAt,
-        },
-      );
+        ''', {
+        'id': m.id,
+        'userId': m.userId,
+        'logDate': m.logDate,
+        'logTime': m.logTime,
+        'moodScore': m.moodScore,
+        'energyScore': m.energyScore,
+        'moodTags': m.moodTags,
+        'factors': m.factors,
+        'note': m.note,
+        'createdAt': m.createdAt,
+        'updatedAt': m.updatedAt,
+      });
       await (_db.update(_db.moodLogs)..where((row) => row.id.equals(m.id)))
           .write(const MoodLogsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('mood_logs');
   }
 
-  Future<void> _flushWaterLogs(Connection conn) async {
+  Future<void> _flushWaterLogs() async {
     final pending = await (_db.select(_db.waterLogs)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final w in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO water_logs (id, user_id, log_date, log_time, amount_ml, container_type,
             created_at, sync_status)
           VALUES (@id, @userId, @logDate, @logTime, @amountMl, @containerType, @createdAt, 1)
           ON CONFLICT (id) DO NOTHING
-        '''),
-        parameters: {
-          'id': w.id,
-          'userId': w.userId,
-          'logDate': w.logDate,
-          'logTime': w.logTime,
-          'amountMl': w.amountMl,
-          'containerType': w.containerType,
-          'createdAt': w.createdAt,
-        },
-      );
+        ''', {
+        'id': w.id,
+        'userId': w.userId,
+        'logDate': w.logDate,
+        'logTime': w.logTime,
+        'amountMl': w.amountMl,
+        'containerType': w.containerType,
+        'createdAt': w.createdAt,
+      });
       await (_db.update(_db.waterLogs)..where((row) => row.id.equals(w.id)))
           .write(const WaterLogsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('water_logs');
   }
 
-  Future<void> _flushWorkoutLogs(Connection conn) async {
+  Future<void> _flushWorkoutLogs() async {
     final pending = await (_db.select(_db.workoutLogs)
           ..where((t) => t.syncStatus.equals(0)))
         .get();
     for (final w in pending) {
-      await conn.execute(
-        Sql.named('''
+      await _neon.namedQuery('''
           INSERT INTO workout_logs (id, user_id, workout_type, name, started_at, ended_at,
             duration_min, distance_m, calories, avg_heart_rate, source, note, created_at,
             updated_at, sync_status)
@@ -484,65 +428,199 @@ class SyncService {
             calories = EXCLUDED.calories, avg_heart_rate = EXCLUDED.avg_heart_rate,
             source = EXCLUDED.source, note = EXCLUDED.note, updated_at = EXCLUDED.updated_at, sync_status = 1
           WHERE workout_logs.updated_at IS NULL OR EXCLUDED.updated_at >= workout_logs.updated_at
-        '''),
-        parameters: {
-          'id': w.id,
-          'userId': w.userId,
-          'workoutType': w.workoutType,
-          'name': w.name,
-          'startedAt': w.startedAt,
-          'endedAt': w.endedAt,
-          'durationMin': w.durationMin,
-          'distanceM': w.distanceM,
-          'calories': w.calories,
-          'avgHeartRate': w.avgHeartRate,
-          'source': w.source,
-          'note': w.note,
-          'createdAt': w.createdAt,
-          'updatedAt': w.updatedAt,
-        },
-      );
+        ''', {
+        'id': w.id,
+        'userId': w.userId,
+        'workoutType': w.workoutType,
+        'name': w.name,
+        'startedAt': w.startedAt,
+        'endedAt': w.endedAt,
+        'durationMin': w.durationMin,
+        'distanceM': w.distanceM,
+        'calories': w.calories,
+        'avgHeartRate': w.avgHeartRate,
+        'source': w.source,
+        'note': w.note,
+        'createdAt': w.createdAt,
+        'updatedAt': w.updatedAt,
+      });
       await (_db.update(_db.workoutLogs)..where((row) => row.id.equals(w.id)))
           .write(const WorkoutLogsCompanion(syncStatus: Value(1)));
     }
     await _markSynced('workout_logs');
   }
 
-  /// Pulls rows newer than the last sync for [table], applying last-write-wins
-  /// by `updated_at` (or `created_at` for append-only log tables).
-  Future<void> pull(String table) async {
-    final conn = await _connection();
+  Future<void> _flushHabitLogs() async {
+    final pending = await (_db.select(_db.habitLogs)
+          ..where((t) => t.syncStatus.equals(0)))
+        .get();
+    for (final h in pending) {
+      await _neon.namedQuery('''
+          INSERT INTO habit_logs (id, habit_id, user_id, log_date, value,
+            mood_after, notes, created_at, sync_status)
+          VALUES (@id, @habitId, @userId, @logDate, @value,
+            @moodAfter, @notes, @createdAt, 1)
+          ON CONFLICT (id) DO NOTHING
+        ''', {
+        'id': h.id,
+        'habitId': h.habitId,
+        'userId': h.userId,
+        'logDate': h.logDate,
+        'value': h.value,
+        'moodAfter': h.moodAfter,
+        'notes': h.notes,
+        'createdAt': h.createdAt,
+      });
+      await (_db.update(_db.habitLogs)..where((row) => row.id.equals(h.id)))
+          .write(const HabitLogsCompanion(syncStatus: Value(1)));
+    }
+    await _markSynced('habit_logs');
+  }
+
+  Future<void> _flushAlarms() async {
+    final all = await _db.select(_db.alarms).get();
+    for (final a in all) {
+      await _neon.namedQuery('''
+          INSERT INTO alarms (id, user_id, label, time, days_of_week, is_enabled,
+            mission_type, snooze_count, snooze_duration_minutes, sound_name, created_at)
+          VALUES (@id, @userId, @label, @time, @daysOfWeek, @isEnabled,
+            @missionType, @snoozeCount, @snoozeDurationMinutes, @soundName, @createdAt)
+          ON CONFLICT (id) DO UPDATE SET
+            label = EXCLUDED.label, time = EXCLUDED.time,
+            days_of_week = EXCLUDED.days_of_week, is_enabled = EXCLUDED.is_enabled,
+            mission_type = EXCLUDED.mission_type, snooze_count = EXCLUDED.snooze_count,
+            snooze_duration_minutes = EXCLUDED.snooze_duration_minutes,
+            sound_name = EXCLUDED.sound_name
+        ''', {
+        'id': a.id,
+        'userId': a.userId,
+        'label': a.label,
+        'time': a.time,
+        'daysOfWeek': a.daysOfWeek,
+        'isEnabled': a.isEnabled,
+        'missionType': a.missionType,
+        'snoozeCount': a.snoozeCount,
+        'snoozeDurationMinutes': a.snoozeDurationMinutes,
+        'soundName': a.soundName,
+        'createdAt': a.createdAt,
+      });
+    }
+    await _markSynced('alarms');
+  }
+
+  Future<void> _pullHabitLogs(String userId) async {
+    final since = await lastSyncedAt('habit_logs');
+    final rows = await _neon.namedQuery(
+      'SELECT * FROM habit_logs WHERE user_id = @userId'
+      ' AND (@since::timestamptz IS NULL OR created_at > @since)',
+      {'userId': userId, 'since': since},
+    );
+    for (final r in rows) {
+      final exists = await (_db.select(_db.habitLogs)
+            ..where((t) => t.id.equals(r['id'] as String)))
+          .getSingleOrNull();
+      if (exists != null) continue;
+      await _db.into(_db.habitLogs).insertOnConflictUpdate(HabitLogsCompanion(
+            id: Value(r['id'] as String),
+            habitId: Value(r['habit_id'] as String),
+            userId: Value(r['user_id'] as String),
+            logDate: Value(r['log_date'] as DateTime),
+            value: Value((r['value'] as num).toDouble()),
+            moodAfter: Value(r['mood_after'] as int?),
+            notes: Value(r['notes'] as String?),
+            createdAt: Value(r['created_at'] as DateTime),
+            syncStatus: const Value(1),
+          ));
+    }
+    await _markSynced('habit_logs');
+  }
+
+  Future<void> _pullAlarms(String userId) async {
+    final rows = await _neon.namedQuery(
+      'SELECT * FROM alarms WHERE user_id = @userId',
+      {'userId': userId},
+    );
+    for (final r in rows) {
+      await _db.into(_db.alarms).insertOnConflictUpdate(AlarmsCompanion(
+            id: Value(r['id'] as String),
+            userId: Value(r['user_id'] as String),
+            label: Value(r['label'] as String),
+            time: Value(r['time'] as String),
+            daysOfWeek: Value(r['days_of_week'] as String),
+            isEnabled: Value(r['is_enabled'] as bool),
+            missionType: Value(r['mission_type'] as String),
+            snoozeCount: Value(r['snooze_count'] as int),
+            snoozeDurationMinutes: Value(r['snooze_duration_minutes'] as int),
+            soundName: Value(r['sound_name'] as String),
+            createdAt: Value(r['created_at'] as DateTime),
+          ));
+    }
+    await _markSynced('alarms');
+  }
+
+  /// Pulls all synced domains for [userId] from Neon into local Drift.
+  /// Used on login/reinstall to restore the user's data.
+  Future<void> pullAll(String userId) async {
+    for (final table in _syncedTables) {
+      await _pullTable(table, userId);
+    }
+    await _pullHabitLogs(userId);
+    await _pullAlarms(userId);
+  }
+
+  static const _syncedTables = [
+    'tasks',
+    'habits',
+    'calendar_events',
+    'focus_sessions',
+    'goals',
+    'journal_entries',
+    'gratitude_logs',
+    'sleep_logs',
+    'mood_logs',
+    'water_logs',
+    'workout_logs',
+  ];
+
+  /// Pulls rows newer than the last sync for [table], filtered to [userId],
+  /// applying last-write-wins by `updated_at` (or `created_at` for
+  /// append-only log tables).
+  Future<void> pull(String table, String userId) async {
+    await _pullTable(table, userId);
+  }
+
+  Future<void> _pullTable(String table, String userId) async {
     final since = await lastSyncedAt(table);
     final tsColumn = _appendOnlyTables.contains(table) ? 'created_at' : 'updated_at';
-    final result = await conn.execute(
-      Sql.named('SELECT * FROM $table WHERE @since::timestamptz IS NULL OR $tsColumn > @since'),
-      parameters: {'since': since},
+    final rows = await _neon.namedQuery(
+      'SELECT * FROM $table WHERE user_id = @userId'
+      ' AND (@since::timestamptz IS NULL OR $tsColumn > @since)',
+      {'since': since, 'userId': userId},
     );
-    for (final row in result) {
-      final map = row.toColumnMap();
+    for (final r in rows) {
       switch (table) {
         case 'tasks':
-          await _upsertLocalTask(map);
+          await _upsertLocalTask(r);
         case 'habits':
-          await _upsertLocalHabit(map);
+          await _upsertLocalHabit(r);
         case 'calendar_events':
-          await _upsertLocalCalendarEvent(map);
+          await _upsertLocalCalendarEvent(r);
         case 'focus_sessions':
-          await _upsertLocalFocusSession(map);
+          await _upsertLocalFocusSession(r);
         case 'goals':
-          await _upsertLocalGoal(map);
+          await _upsertLocalGoal(r);
         case 'journal_entries':
-          await _upsertLocalJournalEntry(map);
+          await _upsertLocalJournalEntry(r);
         case 'gratitude_logs':
-          await _upsertLocalGratitudeLog(map);
+          await _upsertLocalGratitudeLog(r);
         case 'sleep_logs':
-          await _upsertLocalSleepLog(map);
+          await _upsertLocalSleepLog(r);
         case 'mood_logs':
-          await _upsertLocalMoodLog(map);
+          await _upsertLocalMoodLog(r);
         case 'water_logs':
-          await _upsertLocalWaterLog(map);
+          await _upsertLocalWaterLog(r);
         case 'workout_logs':
-          await _upsertLocalWorkoutLog(map);
+          await _upsertLocalWorkoutLog(r);
       }
     }
     await _markSynced(table);
@@ -797,9 +875,7 @@ class SyncService {
 @Riverpod(keepAlive: true)
 SyncService syncService(Ref ref) {
   final db = ref.watch(databaseProvider);
-  final service = SyncService(db);
-  ref.onDispose(service.close);
-  return service;
+  return SyncService(db);
 }
 
 @riverpod
@@ -807,29 +883,21 @@ class SyncController extends _$SyncController {
   @override
   SyncStatus build() => const SyncStatus(phase: SyncPhase.idle);
 
-  Future<void> syncNow() async {
+  Future<void> syncNow(String userId) async {
+    if (userId.isEmpty) return;
     state = const SyncStatus(phase: SyncPhase.syncing);
     final service = ref.read(syncServiceProvider);
     try {
-      await service.flush();
-      for (final table in const [
-        'tasks',
-        'habits',
-        'calendar_events',
-        'focus_sessions',
-        'goals',
-        'journal_entries',
-        'gratitude_logs',
-        'sleep_logs',
-        'mood_logs',
-        'water_logs',
-        'workout_logs',
-      ]) {
-        await service.pull(table);
-      }
+      await Future.wait([
+        service.flush(),
+        service.pullAll(userId),
+      ]).timeout(const Duration(seconds: 30));
       state = SyncStatus(phase: SyncPhase.idle, lastSyncedAt: DateTime.now());
     } catch (e) {
-      state = SyncStatus(phase: SyncPhase.error, error: e.toString());
+      final msg = e is TimeoutException
+          ? 'Sync timed out — check your connection'
+          : e.toString();
+      state = SyncStatus(phase: SyncPhase.error, error: msg);
     }
   }
 }

@@ -21,7 +21,10 @@ mixin _$TaskModel {
   TaskPriority get priority;
   bool get isUrgent;
   bool get isImportant;
-  DateTime? get dueDate;
+  DateTime?
+      get dueDate; // Minutes before dueDate to fire a reminder; null = no reminder,
+// 0 = fire at the exact deadline. Only meaningful when dueDate is set.
+  int? get reminderMinutesBefore;
   bool get isCompleted;
   DateTime? get completedAt;
   List<SubtaskModel> get subtasks;
@@ -56,6 +59,8 @@ mixin _$TaskModel {
             (identical(other.isImportant, isImportant) ||
                 other.isImportant == isImportant) &&
             (identical(other.dueDate, dueDate) || other.dueDate == dueDate) &&
+            (identical(other.reminderMinutesBefore, reminderMinutesBefore) ||
+                other.reminderMinutesBefore == reminderMinutesBefore) &&
             (identical(other.isCompleted, isCompleted) ||
                 other.isCompleted == isCompleted) &&
             (identical(other.completedAt, completedAt) ||
@@ -80,6 +85,7 @@ mixin _$TaskModel {
       isUrgent,
       isImportant,
       dueDate,
+      reminderMinutesBefore,
       isCompleted,
       completedAt,
       const DeepCollectionEquality().hash(subtasks),
@@ -89,7 +95,7 @@ mixin _$TaskModel {
 
   @override
   String toString() {
-    return 'TaskModel(id: $id, userId: $userId, title: $title, description: $description, priority: $priority, isUrgent: $isUrgent, isImportant: $isImportant, dueDate: $dueDate, isCompleted: $isCompleted, completedAt: $completedAt, subtasks: $subtasks, tagIds: $tagIds, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TaskModel(id: $id, userId: $userId, title: $title, description: $description, priority: $priority, isUrgent: $isUrgent, isImportant: $isImportant, dueDate: $dueDate, reminderMinutesBefore: $reminderMinutesBefore, isCompleted: $isCompleted, completedAt: $completedAt, subtasks: $subtasks, tagIds: $tagIds, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -107,6 +113,7 @@ abstract mixin class $TaskModelCopyWith<$Res> {
       bool isUrgent,
       bool isImportant,
       DateTime? dueDate,
+      int? reminderMinutesBefore,
       bool isCompleted,
       DateTime? completedAt,
       List<SubtaskModel> subtasks,
@@ -135,6 +142,7 @@ class _$TaskModelCopyWithImpl<$Res> implements $TaskModelCopyWith<$Res> {
     Object? isUrgent = null,
     Object? isImportant = null,
     Object? dueDate = freezed,
+    Object? reminderMinutesBefore = freezed,
     Object? isCompleted = null,
     Object? completedAt = freezed,
     Object? subtasks = null,
@@ -175,6 +183,10 @@ class _$TaskModelCopyWithImpl<$Res> implements $TaskModelCopyWith<$Res> {
           ? _self.dueDate
           : dueDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      reminderMinutesBefore: freezed == reminderMinutesBefore
+          ? _self.reminderMinutesBefore
+          : reminderMinutesBefore // ignore: cast_nullable_to_non_nullable
+              as int?,
       isCompleted: null == isCompleted
           ? _self.isCompleted
           : isCompleted // ignore: cast_nullable_to_non_nullable
@@ -303,6 +315,7 @@ extension TaskModelPatterns on TaskModel {
             bool isUrgent,
             bool isImportant,
             DateTime? dueDate,
+            int? reminderMinutesBefore,
             bool isCompleted,
             DateTime? completedAt,
             List<SubtaskModel> subtasks,
@@ -324,6 +337,7 @@ extension TaskModelPatterns on TaskModel {
             _that.isUrgent,
             _that.isImportant,
             _that.dueDate,
+            _that.reminderMinutesBefore,
             _that.isCompleted,
             _that.completedAt,
             _that.subtasks,
@@ -359,6 +373,7 @@ extension TaskModelPatterns on TaskModel {
             bool isUrgent,
             bool isImportant,
             DateTime? dueDate,
+            int? reminderMinutesBefore,
             bool isCompleted,
             DateTime? completedAt,
             List<SubtaskModel> subtasks,
@@ -379,6 +394,7 @@ extension TaskModelPatterns on TaskModel {
             _that.isUrgent,
             _that.isImportant,
             _that.dueDate,
+            _that.reminderMinutesBefore,
             _that.isCompleted,
             _that.completedAt,
             _that.subtasks,
@@ -411,6 +427,7 @@ extension TaskModelPatterns on TaskModel {
             bool isUrgent,
             bool isImportant,
             DateTime? dueDate,
+            int? reminderMinutesBefore,
             bool isCompleted,
             DateTime? completedAt,
             List<SubtaskModel> subtasks,
@@ -431,6 +448,7 @@ extension TaskModelPatterns on TaskModel {
             _that.isUrgent,
             _that.isImportant,
             _that.dueDate,
+            _that.reminderMinutesBefore,
             _that.isCompleted,
             _that.completedAt,
             _that.subtasks,
@@ -455,6 +473,7 @@ class _TaskModel implements TaskModel {
       this.isUrgent = false,
       this.isImportant = true,
       this.dueDate,
+      this.reminderMinutesBefore,
       this.isCompleted = false,
       this.completedAt,
       final List<SubtaskModel> subtasks = const [],
@@ -485,6 +504,10 @@ class _TaskModel implements TaskModel {
   final bool isImportant;
   @override
   final DateTime? dueDate;
+// Minutes before dueDate to fire a reminder; null = no reminder,
+// 0 = fire at the exact deadline. Only meaningful when dueDate is set.
+  @override
+  final int? reminderMinutesBefore;
   @override
   @JsonKey()
   final bool isCompleted;
@@ -545,6 +568,8 @@ class _TaskModel implements TaskModel {
             (identical(other.isImportant, isImportant) ||
                 other.isImportant == isImportant) &&
             (identical(other.dueDate, dueDate) || other.dueDate == dueDate) &&
+            (identical(other.reminderMinutesBefore, reminderMinutesBefore) ||
+                other.reminderMinutesBefore == reminderMinutesBefore) &&
             (identical(other.isCompleted, isCompleted) ||
                 other.isCompleted == isCompleted) &&
             (identical(other.completedAt, completedAt) ||
@@ -569,6 +594,7 @@ class _TaskModel implements TaskModel {
       isUrgent,
       isImportant,
       dueDate,
+      reminderMinutesBefore,
       isCompleted,
       completedAt,
       const DeepCollectionEquality().hash(_subtasks),
@@ -578,7 +604,7 @@ class _TaskModel implements TaskModel {
 
   @override
   String toString() {
-    return 'TaskModel(id: $id, userId: $userId, title: $title, description: $description, priority: $priority, isUrgent: $isUrgent, isImportant: $isImportant, dueDate: $dueDate, isCompleted: $isCompleted, completedAt: $completedAt, subtasks: $subtasks, tagIds: $tagIds, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'TaskModel(id: $id, userId: $userId, title: $title, description: $description, priority: $priority, isUrgent: $isUrgent, isImportant: $isImportant, dueDate: $dueDate, reminderMinutesBefore: $reminderMinutesBefore, isCompleted: $isCompleted, completedAt: $completedAt, subtasks: $subtasks, tagIds: $tagIds, createdAt: $createdAt, updatedAt: $updatedAt)';
   }
 }
 
@@ -599,6 +625,7 @@ abstract mixin class _$TaskModelCopyWith<$Res>
       bool isUrgent,
       bool isImportant,
       DateTime? dueDate,
+      int? reminderMinutesBefore,
       bool isCompleted,
       DateTime? completedAt,
       List<SubtaskModel> subtasks,
@@ -627,6 +654,7 @@ class __$TaskModelCopyWithImpl<$Res> implements _$TaskModelCopyWith<$Res> {
     Object? isUrgent = null,
     Object? isImportant = null,
     Object? dueDate = freezed,
+    Object? reminderMinutesBefore = freezed,
     Object? isCompleted = null,
     Object? completedAt = freezed,
     Object? subtasks = null,
@@ -667,6 +695,10 @@ class __$TaskModelCopyWithImpl<$Res> implements _$TaskModelCopyWith<$Res> {
           ? _self.dueDate
           : dueDate // ignore: cast_nullable_to_non_nullable
               as DateTime?,
+      reminderMinutesBefore: freezed == reminderMinutesBefore
+          ? _self.reminderMinutesBefore
+          : reminderMinutesBefore // ignore: cast_nullable_to_non_nullable
+              as int?,
       isCompleted: null == isCompleted
           ? _self.isCompleted
           : isCompleted // ignore: cast_nullable_to_non_nullable

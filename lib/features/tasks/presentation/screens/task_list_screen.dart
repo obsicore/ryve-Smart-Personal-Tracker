@@ -10,6 +10,7 @@ import 'package:hybrid_tracker/features/tasks/domain/providers/task_providers.da
 import 'package:hybrid_tracker/features/tasks/presentation/widgets/create_task_bottom_sheet.dart';
 import 'package:hybrid_tracker/features/tasks/presentation/widgets/task_card.dart';
 import 'package:hybrid_tracker/shared/widgets/empty_state_widget.dart';
+import 'package:hybrid_tracker/shared/widgets/ryve_bottom_nav.dart';
 import 'package:hybrid_tracker/shared/widgets/skeleton_widget.dart';
 
 class TaskListScreen extends ConsumerStatefulWidget {
@@ -42,7 +43,12 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final colorScheme = Theme.of(context).colorScheme;
 
-    return Scaffold(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: Scaffold(
       appBar: AppBar(
         title: Text(
           'Tasks',
@@ -117,7 +123,20 @@ class _TaskListScreenState extends ConsumerState<TaskListScreen>
       floatingActionButton: _GoldFab(
         onTap: () => CreateTaskBottomSheet.show(context),
       ),
-      bottomNavigationBar: _BottomNav(currentIndex: 1),
+      bottomNavigationBar: RyveBottomNav(
+        currentIndex: 1,
+        onTap: (index) {
+          switch (index) {
+            case 0: context.go(Routes.home);
+            case 1: break;
+            case 2: context.go(Routes.alarms);
+            case 3: context.go(Routes.sleep);
+            case 4: context.go(Routes.focus);
+            case 5: context.go(Routes.profile);
+          }
+        },
+      ),
+      ),
     );
   }
 }
@@ -327,58 +346,3 @@ class _GoldFab extends StatelessWidget {
 // ---------------------------------------------------------------------------
 // Bottom navigation
 // ---------------------------------------------------------------------------
-class _BottomNav extends StatelessWidget {
-  const _BottomNav({required this.currentIndex});
-
-  final int currentIndex;
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final colorScheme = Theme.of(context).colorScheme;
-    final activeColor =
-        isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
-
-    return NavigationBar(
-      selectedIndex: currentIndex,
-      backgroundColor: colorScheme.surface,
-      indicatorColor: activeColor.withOpacity(0.12),
-      onDestinationSelected: (i) {
-        switch (i) {
-          case 0: context.go(Routes.home);
-          case 1: context.go(Routes.tasks);
-          case 2: context.go(Routes.habits);
-          case 3: context.go(Routes.focus);
-          case 4: context.go(Routes.profile);
-        }
-      },
-      destinations: [
-        NavigationDestination(
-          icon: Icon(Icons.home_outlined, color: colorScheme.onSurface.withOpacity(0.5)),
-          selectedIcon: Icon(Icons.home_rounded, color: activeColor),
-          label: 'Home',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.check_circle_outline_rounded, color: colorScheme.onSurface.withOpacity(0.5)),
-          selectedIcon: Icon(Icons.check_circle_rounded, color: activeColor),
-          label: 'Tasks',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.eco_outlined, color: colorScheme.onSurface.withOpacity(0.5)),
-          selectedIcon: Icon(Icons.eco_rounded, color: activeColor),
-          label: 'Habits',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.timer_outlined, color: colorScheme.onSurface.withOpacity(0.5)),
-          selectedIcon: Icon(Icons.timer_rounded, color: activeColor),
-          label: 'Focus',
-        ),
-        NavigationDestination(
-          icon: Icon(Icons.person_outline_rounded, color: colorScheme.onSurface.withOpacity(0.5)),
-          selectedIcon: Icon(Icons.person_rounded, color: activeColor),
-          label: 'Profile',
-        ),
-      ],
-    );
-  }
-}

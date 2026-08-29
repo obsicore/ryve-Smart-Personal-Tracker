@@ -209,10 +209,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       case 1:
         context.go(Routes.tasks);
       case 2:
-        context.go(Routes.habits);
+        context.go(Routes.alarms);
       case 3:
-        context.go(Routes.focus);
+        context.go(Routes.sleep);
       case 4:
+        context.go(Routes.focus);
+      case 5:
         context.go(Routes.profile);
     }
   }
@@ -637,6 +639,15 @@ class _QuickActions extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
+          _QuickActionChip(
+            icon: Icons.alarm_rounded,
+            label: 'Alarms',
+            color: primary,
+            surface: surface,
+            isDark: isDark,
+            onTap: () => context.push(Routes.alarms),
+          ),
+          const SizedBox(width: AppSpacing.md),
           _QuickActionChip(
             icon: Icons.bedtime_outlined,
             label: 'Sleep',

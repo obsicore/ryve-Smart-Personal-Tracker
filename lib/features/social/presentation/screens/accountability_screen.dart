@@ -29,6 +29,10 @@ class AccountabilityScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text('Accountability', style: AppTypography.titleLarge(onBg)),
         actions: [
           IconButton(
@@ -94,7 +98,10 @@ class AccountabilityScreen extends ConsumerWidget {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      builder: (_) => _InviteSheet(),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: _InviteSheet(),
+      ),
     );
   }
 
@@ -132,7 +139,10 @@ class _EmptyState extends ConsumerWidget {
             onPressed: () => showModalBottomSheet(
               context: context,
               isScrollControlled: true,
-              builder: (_) => _InviteSheet(),
+              builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: _InviteSheet(),
+      ),
             ),
             child: const Text('Get Started'),
           ).animate(delay: 200.ms).fadeIn(duration: 250.ms),
@@ -233,9 +243,9 @@ class _InviteSheetState extends ConsumerState<_InviteSheet> {
     final muted = isDark ? AppColors.darkOnSurfaceMuted : AppColors.lightOnSurfaceMuted;
 
     return Padding(
-      padding: EdgeInsets.only(
+      padding: const EdgeInsets.only(
         left: AppSpacing.lg, right: AppSpacing.lg, top: AppSpacing.lg,
-        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.lg,
+        bottom: AppSpacing.lg,
       ),
       child: Container(
         decoration: BoxDecoration(color: surface, borderRadius: BorderRadius.circular(AppSpacing.lg)),

@@ -6,7 +6,7 @@ part of 'sync_service.dart';
 // RiverpodGenerator
 // **************************************************************************
 
-String _$syncServiceHash() => r'71e3824a77ffc281e0411ab2a1cec25454c35faa';
+String _$syncServiceHash() => r'253ffc25f333b1f805f94f4dc674d7d9b23f02ac';
 
 /// See also [syncService].
 @ProviderFor(syncService)
@@ -22,7 +22,7 @@ final syncServiceProvider = Provider<SyncService>.internal(
 @Deprecated('Will be removed in 3.0. Use Ref instead')
 // ignore: unused_element
 typedef SyncServiceRef = ProviderRef<SyncService>;
-String _$syncControllerHash() => r'c9ad2660c715e210d37b6601d078ec8b6f538b54';
+String _$syncControllerHash() => r'e755892195d90216087e943dce4b7295f355888f';
 
 /// See also [SyncController].
 @ProviderFor(SyncController)

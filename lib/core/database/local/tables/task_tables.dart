@@ -22,6 +22,9 @@ class Tasks extends Table {
   BoolColumn get isImportant => boolean().withDefault(const Constant(true))();
   DateTimeColumn get dueDate => dateTime().nullable()();
   DateTimeColumn get dueTime => dateTime().nullable()();
+  // Minutes before dueDate to fire a reminder notification; null = no
+  // reminder, 0 = fire at the exact deadline.
+  IntColumn get reminderMinutesBefore => integer().nullable()();
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get completedAt => dateTime().nullable()();
   TextColumn get recurringConfigId => text().nullable()();

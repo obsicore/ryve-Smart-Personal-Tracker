@@ -29,6 +29,12 @@ class HabitListScreen extends ConsumerWidget {
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
+        leading: context.canPop()
+            ? IconButton(
+                icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+                onPressed: () => context.pop(),
+              )
+            : null,
         title: Text('Habits', style: AppTypography.titleLarge(onBg)),
         actions: [
           IconButton(
@@ -101,7 +107,6 @@ class HabitListScreen extends ConsumerWidget {
         backgroundColor: primary,
         child: Icon(Icons.add, color: isDark ? AppColors.darkOnPrimary : AppColors.lightOnPrimary),
       ),
-      bottomNavigationBar: _BottomNav(currentIndex: 2),
     );
   }
 
@@ -180,37 +185,3 @@ class _CompletionHeader extends StatelessWidget {
   }
 }
 
-class _BottomNav extends StatelessWidget {
-  final int currentIndex;
-  const _BottomNav({required this.currentIndex});
-
-  @override
-  Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
-    final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
-    final muted = isDark ? AppColors.darkOnSurfaceMuted : AppColors.lightOnSurfaceMuted;
-
-    return NavigationBar(
-      backgroundColor: surface,
-      selectedIndex: currentIndex,
-      indicatorColor: primary.withOpacity(0.15),
-      onDestinationSelected: (i) {
-        switch (i) {
-          case 0: context.go('/');
-          case 1: context.go('/tasks');
-          case 2: context.go('/habits');
-          case 3: context.go('/focus');
-          case 4: context.go('/profile');
-        }
-      },
-      destinations: [
-        NavigationDestination(icon: Icon(Icons.home_outlined, color: muted), selectedIcon: Icon(Icons.home_rounded, color: primary), label: 'Home'),
-        NavigationDestination(icon: Icon(Icons.check_circle_outline_rounded, color: muted), selectedIcon: Icon(Icons.check_circle_rounded, color: primary), label: 'Tasks'),
-        NavigationDestination(icon: Icon(Icons.eco_outlined, color: muted), selectedIcon: Icon(Icons.eco_rounded, color: primary), label: 'Habits'),
-        NavigationDestination(icon: Icon(Icons.timer_outlined, color: muted), selectedIcon: Icon(Icons.timer_rounded, color: primary), label: 'Focus'),
-        NavigationDestination(icon: Icon(Icons.person_outline_rounded, color: muted), selectedIcon: Icon(Icons.person_rounded, color: primary), label: 'Profile'),
-      ],
-    );
-  }
-}

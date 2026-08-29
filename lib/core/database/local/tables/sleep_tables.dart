@@ -39,6 +39,8 @@ class Alarms extends Table {
   IntColumn get snoozeCount => integer().withDefault(const Constant(3))();
   IntColumn get snoozeDurationMinutes => integer().withDefault(const Constant(5))();
   TextColumn get soundName => text().withDefault(const Constant('default'))();
+  IntColumn get mathLevel => integer().withDefault(const Constant(1))();
+  IntColumn get mathProblemCount => integer().withDefault(const Constant(3))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
 
   @override

@@ -24,6 +24,8 @@ mixin _$AlarmModel {
   int get snoozeCount;
   int get snoozeDurationMinutes;
   String get soundName;
+  int get mathLevel;
+  int get mathProblemCount;
   DateTime get createdAt;
 
   /// Create a copy of AlarmModel
@@ -57,6 +59,10 @@ mixin _$AlarmModel {
                 other.snoozeDurationMinutes == snoozeDurationMinutes) &&
             (identical(other.soundName, soundName) ||
                 other.soundName == soundName) &&
+            (identical(other.mathLevel, mathLevel) ||
+                other.mathLevel == mathLevel) &&
+            (identical(other.mathProblemCount, mathProblemCount) ||
+                other.mathProblemCount == mathProblemCount) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -75,11 +81,13 @@ mixin _$AlarmModel {
       snoozeCount,
       snoozeDurationMinutes,
       soundName,
+      mathLevel,
+      mathProblemCount,
       createdAt);
 
   @override
   String toString() {
-    return 'AlarmModel(id: $id, userId: $userId, label: $label, time: $time, daysOfWeek: $daysOfWeek, isEnabled: $isEnabled, missionType: $missionType, snoozeCount: $snoozeCount, snoozeDurationMinutes: $snoozeDurationMinutes, soundName: $soundName, createdAt: $createdAt)';
+    return 'AlarmModel(id: $id, userId: $userId, label: $label, time: $time, daysOfWeek: $daysOfWeek, isEnabled: $isEnabled, missionType: $missionType, snoozeCount: $snoozeCount, snoozeDurationMinutes: $snoozeDurationMinutes, soundName: $soundName, mathLevel: $mathLevel, mathProblemCount: $mathProblemCount, createdAt: $createdAt)';
   }
 }
 
@@ -100,6 +108,8 @@ abstract mixin class $AlarmModelCopyWith<$Res> {
       int snoozeCount,
       int snoozeDurationMinutes,
       String soundName,
+      int mathLevel,
+      int mathProblemCount,
       DateTime createdAt});
 }
 
@@ -125,6 +135,8 @@ class _$AlarmModelCopyWithImpl<$Res> implements $AlarmModelCopyWith<$Res> {
     Object? snoozeCount = null,
     Object? snoozeDurationMinutes = null,
     Object? soundName = null,
+    Object? mathLevel = null,
+    Object? mathProblemCount = null,
     Object? createdAt = null,
   }) {
     return _then(_self.copyWith(
@@ -168,6 +180,14 @@ class _$AlarmModelCopyWithImpl<$Res> implements $AlarmModelCopyWith<$Res> {
           ? _self.soundName
           : soundName // ignore: cast_nullable_to_non_nullable
               as String,
+      mathLevel: null == mathLevel
+          ? _self.mathLevel
+          : mathLevel // ignore: cast_nullable_to_non_nullable
+              as int,
+      mathProblemCount: null == mathProblemCount
+          ? _self.mathProblemCount
+          : mathProblemCount // ignore: cast_nullable_to_non_nullable
+              as int,
       createdAt: null == createdAt
           ? _self.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable
@@ -278,6 +298,8 @@ extension AlarmModelPatterns on AlarmModel {
             int snoozeCount,
             int snoozeDurationMinutes,
             String soundName,
+            int mathLevel,
+            int mathProblemCount,
             DateTime createdAt)?
         $default, {
     required TResult orElse(),
@@ -296,6 +318,8 @@ extension AlarmModelPatterns on AlarmModel {
             _that.snoozeCount,
             _that.snoozeDurationMinutes,
             _that.soundName,
+            _that.mathLevel,
+            _that.mathProblemCount,
             _that.createdAt);
       case _:
         return orElse();
@@ -328,6 +352,8 @@ extension AlarmModelPatterns on AlarmModel {
             int snoozeCount,
             int snoozeDurationMinutes,
             String soundName,
+            int mathLevel,
+            int mathProblemCount,
             DateTime createdAt)
         $default,
   ) {
@@ -345,6 +371,8 @@ extension AlarmModelPatterns on AlarmModel {
             _that.snoozeCount,
             _that.snoozeDurationMinutes,
             _that.soundName,
+            _that.mathLevel,
+            _that.mathProblemCount,
             _that.createdAt);
     }
   }
@@ -374,6 +402,8 @@ extension AlarmModelPatterns on AlarmModel {
             int snoozeCount,
             int snoozeDurationMinutes,
             String soundName,
+            int mathLevel,
+            int mathProblemCount,
             DateTime createdAt)?
         $default,
   ) {
@@ -391,6 +421,8 @@ extension AlarmModelPatterns on AlarmModel {
             _that.snoozeCount,
             _that.snoozeDurationMinutes,
             _that.soundName,
+            _that.mathLevel,
+            _that.mathProblemCount,
             _that.createdAt);
       case _:
         return null;
@@ -412,6 +444,8 @@ class _AlarmModel implements AlarmModel {
       this.snoozeCount = 3,
       this.snoozeDurationMinutes = 5,
       this.soundName = 'default',
+      this.mathLevel = 1,
+      this.mathProblemCount = 3,
       required this.createdAt});
   factory _AlarmModel.fromJson(Map<String, dynamic> json) =>
       _$AlarmModelFromJson(json);
@@ -443,6 +477,12 @@ class _AlarmModel implements AlarmModel {
   @override
   @JsonKey()
   final String soundName;
+  @override
+  @JsonKey()
+  final int mathLevel;
+  @override
+  @JsonKey()
+  final int mathProblemCount;
   @override
   final DateTime createdAt;
 
@@ -482,6 +522,10 @@ class _AlarmModel implements AlarmModel {
                 other.snoozeDurationMinutes == snoozeDurationMinutes) &&
             (identical(other.soundName, soundName) ||
                 other.soundName == soundName) &&
+            (identical(other.mathLevel, mathLevel) ||
+                other.mathLevel == mathLevel) &&
+            (identical(other.mathProblemCount, mathProblemCount) ||
+                other.mathProblemCount == mathProblemCount) &&
             (identical(other.createdAt, createdAt) ||
                 other.createdAt == createdAt));
   }
@@ -500,11 +544,13 @@ class _AlarmModel implements AlarmModel {
       snoozeCount,
       snoozeDurationMinutes,
       soundName,
+      mathLevel,
+      mathProblemCount,
       createdAt);
 
   @override
   String toString() {
-    return 'AlarmModel(id: $id, userId: $userId, label: $label, time: $time, daysOfWeek: $daysOfWeek, isEnabled: $isEnabled, missionType: $missionType, snoozeCount: $snoozeCount, snoozeDurationMinutes: $snoozeDurationMinutes, soundName: $soundName, createdAt: $createdAt)';
+    return 'AlarmModel(id: $id, userId: $userId, label: $label, time: $time, daysOfWeek: $daysOfWeek, isEnabled: $isEnabled, missionType: $missionType, snoozeCount: $snoozeCount, snoozeDurationMinutes: $snoozeDurationMinutes, soundName: $soundName, mathLevel: $mathLevel, mathProblemCount: $mathProblemCount, createdAt: $createdAt)';
   }
 }
 
@@ -527,6 +573,8 @@ abstract mixin class _$AlarmModelCopyWith<$Res>
       int snoozeCount,
       int snoozeDurationMinutes,
       String soundName,
+      int mathLevel,
+      int mathProblemCount,
       DateTime createdAt});
 }
 
@@ -552,6 +600,8 @@ class __$AlarmModelCopyWithImpl<$Res> implements _$AlarmModelCopyWith<$Res> {
     Object? snoozeCount = null,
     Object? snoozeDurationMinutes = null,
     Object? soundName = null,
+    Object? mathLevel = null,
+    Object? mathProblemCount = null,
     Object? createdAt = null,
   }) {
     return _then(_AlarmModel(
@@ -595,6 +645,14 @@ class __$AlarmModelCopyWithImpl<$Res> implements _$AlarmModelCopyWith<$Res> {
           ? _self.soundName
           : soundName // ignore: cast_nullable_to_non_nullable
               as String,
+      mathLevel: null == mathLevel
+          ? _self.mathLevel
+          : mathLevel // ignore: cast_nullable_to_non_nullable
+              as int,
+      mathProblemCount: null == mathProblemCount
+          ? _self.mathProblemCount
+          : mathProblemCount // ignore: cast_nullable_to_non_nullable
+              as int,
       createdAt: null == createdAt
           ? _self.createdAt
           : createdAt // ignore: cast_nullable_to_non_nullable

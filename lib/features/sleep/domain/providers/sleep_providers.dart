@@ -54,14 +54,25 @@ class AlarmNotifier extends _$AlarmNotifier {
   @override
   Future<void> build() async {}
 
+  // Scheduling failures (e.g. exact-alarm permission revoked in system
+  // settings) must not roll back a save the user already confirmed — the
+  // alarm row is the source of truth; the OS-level schedule can be retried.
+  Future<void> _scheduleOrIgnore(AlarmModel alarm) async {
+    try {
+      await NotificationService.instance.scheduleAlarm(alarm);
+    } catch (_) {
+      // Alarm is saved; only the OS notification failed to schedule.
+    }
+  }
+
   Future<void> create(AlarmModel alarm) async {
     await ref.read(sleepRepositoryProvider).createAlarm(alarm);
-    await NotificationService.instance.scheduleAlarm(alarm);
+    await _scheduleOrIgnore(alarm);
   }
 
   Future<void> updateAlarm(AlarmModel alarm) async {
     await ref.read(sleepRepositoryProvider).updateAlarm(alarm);
-    await NotificationService.instance.scheduleAlarm(alarm);
+    await _scheduleOrIgnore(alarm);
   }
 
   Future<void> delete(String id) async {
@@ -73,7 +84,7 @@ class AlarmNotifier extends _$AlarmNotifier {
     await ref.read(sleepRepositoryProvider).toggleAlarm(id, enabled);
     final alarm = await ref.read(sleepRepositoryProvider).getAlarm(id);
     if (alarm != null) {
-      await NotificationService.instance.scheduleAlarm(alarm);
+      await _scheduleOrIgnore(alarm);
     }
   }
 }

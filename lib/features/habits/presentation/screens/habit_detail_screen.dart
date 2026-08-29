@@ -26,6 +26,10 @@ class HabitDetailScreen extends ConsumerWidget {
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text('Habit Detail', style: AppTypography.titleLarge(onBg)),
         actions: [
           IconButton(

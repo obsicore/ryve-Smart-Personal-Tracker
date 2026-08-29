@@ -14,7 +14,10 @@ Future<void> showWorkoutLogSheet(BuildContext context) {
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const _WorkoutLogSheet(),
+    builder: (ctx) => Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+      child: const _WorkoutLogSheet(),
+    ),
   );
 }
 
@@ -48,9 +51,7 @@ class _WorkoutLogSheetState extends ConsumerState<_WorkoutLogSheet> {
     final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
     final muted = isDark ? AppColors.darkOnSurfaceMuted : AppColors.lightOnSurfaceMuted;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
+    return Container(
         decoration: BoxDecoration(
           color: bg,
           borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
@@ -168,7 +169,6 @@ class _WorkoutLogSheetState extends ConsumerState<_WorkoutLogSheet> {
             ],
           ),
         ),
-      ),
     );
   }
 

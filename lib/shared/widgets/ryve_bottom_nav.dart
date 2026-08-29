@@ -5,7 +5,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 // RyveBottomNav
 //
 // Custom bottom navigation bar used by all main scaffolded screens.
-// 5 tabs: Home, Tasks, Habits, Focus, More (Profile).
+// 6 tabs: Home, Tasks, Alarm, Sleep, Focus, More (Profile).
 //
 // Design rules:
 //  - 64 dp bar height + MediaQuery.of(context).padding.bottom
@@ -15,7 +15,7 @@ import 'package:flutter_animate/flutter_animate.dart';
 //  - Background: surface colour from theme
 // ---------------------------------------------------------------------------
 
-enum RyveTab { home, tasks, habits, focus, more }
+enum RyveTab { home, tasks, alarm, sleep, focus, more }
 
 class RyveBottomNav extends StatelessWidget {
   const RyveBottomNav({
@@ -30,7 +30,8 @@ class RyveBottomNav extends StatelessWidget {
   static const _items = [
     _NavItem(icon: Icons.home_rounded,         label: 'Home'),
     _NavItem(icon: Icons.check_box_rounded,     label: 'Tasks'),
-    _NavItem(icon: Icons.eco_rounded,           label: 'Habits'),
+    _NavItem(icon: Icons.alarm_rounded,         label: 'Alarm'),
+    _NavItem(icon: Icons.bedtime_rounded,       label: 'Sleep'),
     _NavItem(icon: Icons.timer_rounded,         label: 'Focus'),
     _NavItem(icon: Icons.person_rounded,        label: 'More'),
   ];

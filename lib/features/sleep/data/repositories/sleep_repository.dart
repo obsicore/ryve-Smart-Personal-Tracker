@@ -72,6 +72,8 @@ class SleepRepositoryImpl implements SleepRepository {
         snoozeCount: row.snoozeCount,
         snoozeDurationMinutes: row.snoozeDurationMinutes,
         soundName: row.soundName,
+        mathLevel: row.mathLevel,
+        mathProblemCount: row.mathProblemCount,
         createdAt: row.createdAt,
       );
 
@@ -172,6 +174,8 @@ class SleepRepositoryImpl implements SleepRepository {
             snoozeCount: Value(alarm.snoozeCount),
             snoozeDurationMinutes: Value(alarm.snoozeDurationMinutes),
             soundName: Value(alarm.soundName),
+            mathLevel: Value(alarm.mathLevel),
+            mathProblemCount: Value(alarm.mathProblemCount),
             createdAt: Value(alarm.createdAt),
           ),
         );
@@ -189,6 +193,8 @@ class SleepRepositoryImpl implements SleepRepository {
         snoozeCount: Value(alarm.snoozeCount),
         snoozeDurationMinutes: Value(alarm.snoozeDurationMinutes),
         soundName: Value(alarm.soundName),
+        mathLevel: Value(alarm.mathLevel),
+        mathProblemCount: Value(alarm.mathProblemCount),
       ),
     );
   }

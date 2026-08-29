@@ -50,8 +50,10 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
       case 1:
         context.go('/tasks');
       case 2:
-        context.go('/habits');
-      case 4:
+        context.go('/alarms');
+      case 3:
+        context.go('/sleep');
+      case 5:
         context.go('/profile');
     }
   }
@@ -102,7 +104,12 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
 
     final sessionsBeforeLong = settings?.sessionsBeforeLongBreak ?? 4;
 
-    return Scaffold(
+    return PopScope(
+      canPop: context.canPop(),
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/');
+      },
+      child: Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
         backgroundColor: bg,
@@ -221,8 +228,9 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
         ),
       ),
       bottomNavigationBar: RyveBottomNav(
-        currentIndex: 3,
+        currentIndex: 4,
         onTap: _onNavTap,
+      ),
       ),
     );
   }

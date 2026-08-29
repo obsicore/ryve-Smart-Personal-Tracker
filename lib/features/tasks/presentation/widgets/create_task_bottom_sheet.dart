@@ -12,14 +12,19 @@ import 'package:hybrid_tracker/shared/widgets/ryve_button.dart';
 const _uuid = Uuid();
 
 class CreateTaskBottomSheet extends ConsumerStatefulWidget {
-  const CreateTaskBottomSheet({super.key});
+  const CreateTaskBottomSheet({super.key, this.initialDate});
 
-  static Future<void> show(BuildContext context) {
+  final DateTime? initialDate;
+
+  static Future<void> show(BuildContext context, {DateTime? initialDate}) {
     return showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => const CreateTaskBottomSheet(),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: CreateTaskBottomSheet(initialDate: initialDate),
+      ),
     );
   }
 
@@ -27,6 +32,18 @@ class CreateTaskBottomSheet extends ConsumerStatefulWidget {
   ConsumerState<CreateTaskBottomSheet> createState() =>
       _CreateTaskBottomSheetState();
 }
+
+// Offsets shown in the reminder picker. null = no reminder, 0 = at the exact
+// deadline, otherwise minutes before.
+const Map<int?, String> _reminderOptions = {
+  null: 'No reminder',
+  0: 'At deadline',
+  15: '15 min before',
+  30: '30 min before',
+  60: '1 hour before',
+  180: '3 hours before',
+  1440: '1 day before',
+};
 
 class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
     with SingleTickerProviderStateMixin {
@@ -37,11 +54,14 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
   final _focusNode = FocusNode();
   TaskPriority _selectedPriority = TaskPriority.medium;
   DateTime? _selectedDueDate;
+  TimeOfDay? _selectedDueTime;
+  int? _reminderMinutesBefore;
   bool _isSubmitting = false;
 
   @override
   void initState() {
     super.initState();
+    _selectedDueDate = widget.initialDate;
     _entryController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 300),
@@ -81,6 +101,31 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
     }
   }
 
+  Future<void> _pickDueTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _selectedDueTime ?? TimeOfDay.now(),
+    );
+    if (picked != null) {
+      setState(() => _selectedDueTime = picked);
+    }
+  }
+
+  // Deadline reminders need an exact instant — a date-only deadline defaults
+  // to end of day so "3 hours before" still means something.
+  DateTime? get _combinedDueDate {
+    final date = _selectedDueDate;
+    if (date == null) return null;
+    final time = _selectedDueTime;
+    return DateTime(
+      date.year,
+      date.month,
+      date.day,
+      time?.hour ?? 23,
+      time?.minute ?? 59,
+    );
+  }
+
   Future<void> _submit() async {
     final title = _titleController.text.trim();
     if (title.isEmpty) {
@@ -100,7 +145,8 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
       title: title,
       priority: _selectedPriority,
       isUrgent: _selectedPriority == TaskPriority.urgent,
-      dueDate: _selectedDueDate,
+      dueDate: _combinedDueDate,
+      reminderMinutesBefore: _combinedDueDate != null ? _reminderMinutesBefore : null,
       createdAt: now,
       updatedAt: now,
     );
@@ -123,8 +169,6 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
     final disableAnimations = MediaQuery.of(context).disableAnimations;
     final colorScheme = Theme.of(context).colorScheme;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
-
     Widget sheet = AnimatedBuilder(
       animation: _scaleAnimation,
       builder: (context, child) => Transform.scale(
@@ -182,7 +226,6 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
                 Expanded(
                   child: SingleChildScrollView(
                     controller: scrollController,
-                    padding: EdgeInsets.only(bottom: bottomInset),
                     child: Padding(
                       padding: const EdgeInsets.symmetric(
                           horizontal: AppSpacing.xl),
@@ -330,8 +373,11 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
                                   const Spacer(),
                                   if (_selectedDueDate != null)
                                     GestureDetector(
-                                      onTap: () =>
-                                          setState(() => _selectedDueDate = null),
+                                      onTap: () => setState(() {
+                                        _selectedDueDate = null;
+                                        _selectedDueTime = null;
+                                        _reminderMinutesBefore = null;
+                                      }),
                                       child: Icon(
                                         Icons.close_rounded,
                                         size: 16,
@@ -343,6 +389,96 @@ class _CreateTaskBottomSheetState extends ConsumerState<CreateTaskBottomSheet>
                               ),
                             ),
                           ),
+
+                          if (_selectedDueDate != null) ...[
+                            const SizedBox(height: AppSpacing.md),
+                            InkWell(
+                              onTap: _pickDueTime,
+                              borderRadius: BorderRadius.circular(AppRadius.md),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: AppSpacing.lg,
+                                  vertical: AppSpacing.md,
+                                ),
+                                decoration: BoxDecoration(
+                                  border: Border.all(
+                                    color: colorScheme.onSurface.withOpacity(0.2),
+                                  ),
+                                  borderRadius: BorderRadius.circular(AppRadius.md),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.access_time_rounded,
+                                      size: 18,
+                                      color: _selectedDueTime != null
+                                          ? (isDark
+                                              ? AppColors.darkPrimary
+                                              : AppColors.lightAccent)
+                                          : colorScheme.onSurface.withOpacity(0.4),
+                                    ),
+                                    const SizedBox(width: AppSpacing.sm),
+                                    Expanded(
+                                      child: Text(
+                                        _selectedDueTime != null
+                                            ? _selectedDueTime!.format(context)
+                                            : 'Select time (optional)',
+                                        style: TextStyle(
+                                          color: _selectedDueTime != null
+                                              ? colorScheme.onSurface
+                                              : colorScheme.onSurface.withOpacity(0.4),
+                                          fontSize: 15,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+
+                            const SizedBox(height: AppSpacing.xxl),
+
+                            Text(
+                              'Reminder',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .labelMedium
+                                  ?.copyWith(
+                                    color: colorScheme.onSurface.withOpacity(0.6),
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: 0.5,
+                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.sm),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: colorScheme.onSurface.withOpacity(0.2),
+                                ),
+                                borderRadius: BorderRadius.circular(AppRadius.md),
+                              ),
+                              child: DropdownButtonHideUnderline(
+                                child: DropdownButton<int?>(
+                                  value: _reminderMinutesBefore,
+                                  isExpanded: true,
+                                  icon: Icon(Icons.expand_more_rounded,
+                                      color: colorScheme.onSurface.withOpacity(0.5)),
+                                  dropdownColor: colorScheme.surface,
+                                  style: TextStyle(color: colorScheme.onSurface, fontSize: 15),
+                                  items: _reminderOptions.entries
+                                      .map((e) => DropdownMenuItem<int?>(
+                                            value: e.key,
+                                            child: Text(e.value),
+                                          ))
+                                      .toList(),
+                                  onChanged: (v) =>
+                                      setState(() => _reminderMinutesBefore = v),
+                                ),
+                              ),
+                            ),
+                          ],
 
                           const SizedBox(height: AppSpacing.x3l),
 

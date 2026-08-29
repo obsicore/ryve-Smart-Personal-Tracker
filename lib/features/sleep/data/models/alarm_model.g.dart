@@ -20,6 +20,8 @@ _AlarmModel _$AlarmModelFromJson(Map<String, dynamic> json) => _AlarmModel(
       snoozeDurationMinutes:
           (json['snoozeDurationMinutes'] as num?)?.toInt() ?? 5,
       soundName: json['soundName'] as String? ?? 'default',
+      mathLevel: (json['mathLevel'] as num?)?.toInt() ?? 1,
+      mathProblemCount: (json['mathProblemCount'] as num?)?.toInt() ?? 3,
       createdAt: DateTime.parse(json['createdAt'] as String),
     );
 
@@ -35,6 +37,8 @@ Map<String, dynamic> _$AlarmModelToJson(_AlarmModel instance) =>
       'snoozeCount': instance.snoozeCount,
       'snoozeDurationMinutes': instance.snoozeDurationMinutes,
       'soundName': instance.soundName,
+      'mathLevel': instance.mathLevel,
+      'mathProblemCount': instance.mathProblemCount,
       'createdAt': instance.createdAt.toIso8601String(),
     };
 

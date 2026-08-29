@@ -30,6 +30,10 @@ class AppearanceScreen extends ConsumerWidget {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text('Appearance', style: AppTypography.titleLarge(onBg)),
       ),
       body: themesAsync.when(

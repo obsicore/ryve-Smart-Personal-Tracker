@@ -46,6 +46,10 @@ class _ChallengeListScreenState extends ConsumerState<ChallengeListScreen>
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text('Challenges', style: AppTypography.titleLarge(onBg)),
         bottom: TabBar(
           controller: _tabController,

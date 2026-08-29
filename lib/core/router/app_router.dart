@@ -18,6 +18,7 @@ import 'package:hybrid_tracker/features/habits/presentation/screens/create_habit
 import 'package:hybrid_tracker/features/calendar/presentation/screens/calendar_screen.dart';
 import 'package:hybrid_tracker/features/focus/presentation/screens/focus_screen.dart';
 import 'package:hybrid_tracker/features/sleep/presentation/screens/sleep_screen.dart';
+import 'package:hybrid_tracker/features/sleep/presentation/screens/alarm_list_screen.dart';
 import 'package:hybrid_tracker/features/profile/presentation/screens/profile_screen.dart';
 import 'package:hybrid_tracker/features/wellness/presentation/screens/wellness_screen.dart';
 import 'package:hybrid_tracker/features/wellness/presentation/screens/breathing_session_screen.dart';
@@ -55,6 +56,7 @@ abstract final class Routes {
   static const habitDetail = '/habits/:id';
   static const focus     = '/focus';
   static const sleep     = '/sleep';
+  static const alarms    = '/alarms';
   static const calendar  = '/calendar';
   static const profile   = '/profile';
   static const wellness  = '/wellness';
@@ -253,6 +255,13 @@ GoRouter appRouter(Ref ref) {
         pageBuilder: (context, state) => _fadeSlidePage(
           pageKey: state.pageKey,
           child: const SleepScreen(),
+        ),
+      ),
+      GoRoute(
+        path: Routes.alarms,
+        pageBuilder: (context, state) => _fadeSlidePage(
+          pageKey: state.pageKey,
+          child: const AlarmListScreen(),
         ),
       ),
       GoRoute(

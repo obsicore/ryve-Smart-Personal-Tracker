@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
+import 'package:hybrid_tracker/core/services/notification_service.dart';
 import 'package:hybrid_tracker/core/services/xp_service.dart';
 import 'package:hybrid_tracker/features/auth/domain/providers/auth_providers.dart';
 import 'package:hybrid_tracker/features/focus/data/models/focus_session_model.dart';
@@ -200,6 +201,7 @@ class FocusTimerNotifier extends _$FocusTimerNotifier {
   }
 
   void _onComplete() {
+    NotificationService.instance.showFocusComplete(state.sessionType).ignore();
     if (state.sessionType == FocusSessionType.work) {
       _recordSession(wasCompleted: true);
     }

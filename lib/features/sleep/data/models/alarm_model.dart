@@ -18,6 +18,8 @@ sealed class AlarmModel with _$AlarmModel {
     @Default(3) int snoozeCount,
     @Default(5) int snoozeDurationMinutes,
     @Default('default') String soundName,
+    @Default(1) int mathLevel,
+    @Default(3) int mathProblemCount,
     required DateTime createdAt,
   }) = _AlarmModel;
 

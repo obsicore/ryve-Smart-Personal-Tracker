@@ -22,7 +22,10 @@ class LogHabitBottomSheet extends ConsumerStatefulWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => LogHabitBottomSheet(habit: habit),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: LogHabitBottomSheet(habit: habit),
+      ),
     );
   }
 
@@ -73,11 +76,11 @@ class _LogHabitBottomSheetState extends ConsumerState<LogHabitBottomSheet> {
           top: Radius.circular(AppRadius.xl),
         ),
       ),
-      padding: EdgeInsets.fromLTRB(
+      padding: const EdgeInsets.fromLTRB(
         AppSpacing.xxl,
         AppSpacing.md,
         AppSpacing.xxl,
-        AppSpacing.xxl + MediaQuery.of(context).viewInsets.bottom,
+        AppSpacing.xxl,
       ),
       child: SingleChildScrollView(
         child: Column(

@@ -16,6 +16,9 @@ sealed class TaskModel with _$TaskModel {
     @Default(false) bool isUrgent,
     @Default(true) bool isImportant,
     DateTime? dueDate,
+    // Minutes before dueDate to fire a reminder; null = no reminder,
+    // 0 = fire at the exact deadline. Only meaningful when dueDate is set.
+    int? reminderMinutesBefore,
     @Default(false) bool isCompleted,
     DateTime? completedAt,
     @Default([]) List<SubtaskModel> subtasks,

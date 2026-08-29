@@ -174,6 +174,10 @@ class _WriteEntryScreenState extends ConsumerState<WriteEntryScreen> {
       appBar: AppBar(
         backgroundColor: bg,
         elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back_ios_new_rounded, color: onBg, size: 20),
+          onPressed: () => Navigator.of(context).pop(),
+        ),
         title: Text(
           widget.entryId == null ? 'New Entry' : 'Edit Entry',
           style: AppTypography.titleLarge(onBg),
