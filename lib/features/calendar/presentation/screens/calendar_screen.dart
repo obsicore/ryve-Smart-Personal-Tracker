@@ -10,6 +10,9 @@ import 'package:hybrid_tracker/features/calendar/data/models/calendar_event_mode
 import 'package:hybrid_tracker/features/calendar/domain/providers/calendar_providers.dart';
 import 'package:hybrid_tracker/features/calendar/presentation/screens/create_event_screen.dart';
 import 'package:hybrid_tracker/features/calendar/presentation/widgets/event_card_widget.dart';
+import 'package:hybrid_tracker/features/tasks/data/models/task_model.dart';
+import 'package:hybrid_tracker/features/tasks/domain/providers/task_providers.dart';
+import 'package:hybrid_tracker/features/tasks/presentation/widgets/create_task_bottom_sheet.dart';
 import 'package:hybrid_tracker/shared/widgets/skeleton_widget.dart';
 
 // ---------------------------------------------------------------------------
@@ -93,6 +96,11 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
     );
   }
 
+  void _openCreateTask() {
+    final selected = ref.read(selectedDayProvider);
+    CreateTaskBottomSheet.show(context, initialDate: selected);
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -123,10 +131,32 @@ class _CalendarScreenState extends ConsumerState<CalendarScreen>
           onPressed: () => Navigator.of(context).maybePop(),
         ),
         actions: [
-          IconButton(
+          PopupMenuButton<void>(
             icon: Icon(Icons.add_rounded, color: primary, size: 26),
-            onPressed: _openCreateEvent,
-            tooltip: 'Add event',
+            tooltip: 'Add',
+            onSelected: (_) {},
+            itemBuilder: (context) => [
+              PopupMenuItem<void>(
+                onTap: _openCreateEvent,
+                child: const Row(
+                  children: [
+                    Icon(Icons.event_outlined, size: 18),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('Add Event'),
+                  ],
+                ),
+              ),
+              PopupMenuItem<void>(
+                onTap: _openCreateTask,
+                child: const Row(
+                  children: [
+                    Icon(Icons.check_box_outlined, size: 18),
+                    SizedBox(width: AppSpacing.sm),
+                    Text('Add Task with deadline'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -305,6 +335,10 @@ class _CalendarGrid extends ConsumerWidget {
     final monthEventsAsync =
         ref.watch(monthEventsProvider(userId, focusedMonth));
     final events = monthEventsAsync.valueOrNull ?? [];
+    final allTasksAsync = ref.watch(allTasksProvider);
+    final tasksWithDeadline = (allTasksAsync.valueOrNull ?? [])
+        .where((t) => t.dueDate != null)
+        .toList();
 
     final days = _buildDays(focusedMonth);
     final today = DateTime.now();
@@ -336,6 +370,10 @@ class _CalendarGrid extends ConsumerWidget {
                   .where((e) => _isSameDay(e.startTime, day))
                   .take(3)
                   .toList();
+              final dayTasks = tasksWithDeadline
+                  .where((t) => _isSameDay(t.dueDate!, day))
+                  .take(3)
+                  .toList();
 
               final row = index ~/ 7;
 
@@ -345,6 +383,7 @@ class _CalendarGrid extends ConsumerWidget {
                 isToday: isToday,
                 isSelected: isSelected,
                 events: dayEvents,
+                taskCount: dayTasks.length,
                 onTap: () => onDayTap(day),
                 isDark: isDark,
                 animDelay: Duration(milliseconds: row * 40),
@@ -367,6 +406,7 @@ class _DayCell extends StatefulWidget {
     required this.isToday,
     required this.isSelected,
     required this.events,
+    required this.taskCount,
     required this.onTap,
     required this.isDark,
     required this.animDelay,
@@ -377,6 +417,7 @@ class _DayCell extends StatefulWidget {
   final bool isToday;
   final bool isSelected;
   final List<CalendarEventModel> events;
+  final int taskCount;
   final VoidCallback onTap;
   final bool isDark;
   final Duration animDelay;
@@ -475,23 +516,32 @@ class _DayCellState extends State<_DayCell>
               ),
             ),
             const SizedBox(height: 2),
-            if (widget.events.isNotEmpty)
+            if (widget.events.isNotEmpty || widget.taskCount > 0)
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
-                children: widget.events
-                    .take(4)
-                    .map(
-                      (e) => Container(
-                        width: 5,
-                        height: 5,
-                        margin: const EdgeInsets.symmetric(horizontal: 1),
-                        decoration: BoxDecoration(
-                          color: _parseColor(e.color),
-                          shape: BoxShape.circle,
+                children: [
+                  ...widget.events.take(3).map(
+                        (e) => Container(
+                          width: 5,
+                          height: 5,
+                          margin: const EdgeInsets.symmetric(horizontal: 1),
+                          decoration: BoxDecoration(
+                            color: _parseColor(e.color),
+                            shape: BoxShape.circle,
+                          ),
                         ),
                       ),
-                    )
-                    .toList(),
+                  if (widget.taskCount > 0)
+                    Container(
+                      width: 5,
+                      height: 5,
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(
+                        color: secondary,
+                        borderRadius: BorderRadius.circular(1),
+                      ),
+                    ),
+                ],
               )
             else
               const SizedBox(height: 7),
@@ -534,7 +584,12 @@ class _DayEventsList extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final dayEventsAsync =
         ref.watch(dayEventsProvider(userId, selectedDay));
+    final dayTasks = (ref.watch(allTasksProvider).valueOrNull ?? [])
+        .where((t) => t.dueDate != null && _isSameDay(t.dueDate!, selectedDay))
+        .toList()
+      ..sort((a, b) => a.dueDate!.compareTo(b.dueDate!));
     final primary = isDark ? AppColors.darkPrimary : AppColors.lightPrimary;
+    final secondary = isDark ? AppColors.darkSecondary : AppColors.lightSecondary;
     final onBg =
         isDark ? AppColors.darkOnBackground : AppColors.lightOnBackground;
     final muted =
@@ -542,134 +597,185 @@ class _DayEventsList extends ConsumerWidget {
 
     final headerLabel = DateFormat('EEEE, MMMM d').format(selectedDay);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(
-            AppSpacing.lg,
-            AppSpacing.md,
-            AppSpacing.lg,
-            AppSpacing.sm,
-          ),
-          child: Text(
-            headerLabel,
-            style: AppTypography.titleMedium(onBg),
-          ),
-        ),
-        Expanded(
-          child: dayEventsAsync.when(
-            loading: () => ListView.separated(
-              padding: const EdgeInsets.symmetric(
-                horizontal: AppSpacing.lg,
-                vertical: AppSpacing.sm,
-              ),
-              itemCount: 3,
-              separatorBuilder: (_, __) =>
-                  const SizedBox(height: AppSpacing.md),
-              itemBuilder: (_, __) => SkeletonWidget(
-                width: double.infinity,
-                height: 72,
-              ),
-            ),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(AppSpacing.xxl),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.error_outline_rounded,
-                      color: AppColors.error,
-                      size: 40,
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    Text(
-                      'Could not load events',
-                      style: AppTypography.bodyMedium(onBg),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            data: (events) {
-              if (events.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(AppSpacing.xxl),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.event_available_rounded,
-                          color: muted,
-                          size: 48,
-                        )
-                            .animate()
-                            .scale(
-                              begin: const Offset(0.8, 0.8),
-                              end: const Offset(1, 1),
-                              duration: 350.ms,
-                              curve: Curves.elasticOut,
-                            ),
-                        const SizedBox(height: AppSpacing.md),
-                        Text(
-                          'Nothing scheduled',
-                          style: AppTypography.titleMedium(onBg),
-                        )
-                            .animate()
-                            .fadeIn(duration: 250.ms, delay: 80.ms),
-                        const SizedBox(height: AppSpacing.sm),
-                        Text(
-                          'Tap + to add an event for this day.',
-                          style: AppTypography.bodySmall(muted),
-                          textAlign: TextAlign.center,
-                        )
-                            .animate()
-                            .fadeIn(duration: 200.ms, delay: 160.ms),
-                        const SizedBox(height: AppSpacing.x3l),
-                        TextButton.icon(
-                          onPressed: onAddTap,
-                          icon: Icon(Icons.add_rounded, color: primary),
-                          label: Text(
-                            'Add Event',
-                            style: AppTypography.labelLarge(primary),
-                          ),
-                        )
-                            .animate()
-                            .fadeIn(duration: 200.ms, delay: 240.ms),
-                      ],
-                    ),
-                  ),
-                );
-              }
+    // Build a flat item list: [header, ...tasks, ...events]
+    // This single ListView avoids nested scroll & overflow when task list is tall.
+    return dayEventsAsync.when(
+      loading: () => ListView(
+        padding: const EdgeInsets.all(AppSpacing.lg),
+        children: [
+          Text(headerLabel, style: AppTypography.titleMedium(onBg)),
+          const SizedBox(height: AppSpacing.md),
+          const SkeletonWidget(width: double.infinity, height: 72),
+          const SizedBox(height: AppSpacing.md),
+          const SkeletonWidget(width: double.infinity, height: 72),
+        ],
+      ),
+      error: (_, __) => ListView(
+        padding: const EdgeInsets.all(AppSpacing.xxl),
+        children: [
+          Text(headerLabel, style: AppTypography.titleMedium(onBg)),
+          const SizedBox(height: AppSpacing.xl),
+          Icon(Icons.error_outline_rounded, color: AppColors.error, size: 40),
+          const SizedBox(height: AppSpacing.md),
+          Text('Could not load events', style: AppTypography.bodyMedium(onBg), textAlign: TextAlign.center),
+        ],
+      ),
+      data: (events) {
+        final hasContent = dayTasks.isNotEmpty || events.isNotEmpty;
 
-              return ListView.separated(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: AppSpacing.lg,
-                  vertical: AppSpacing.sm,
-                ),
-                itemCount: events.length,
-                separatorBuilder: (_, __) =>
-                    const SizedBox(height: AppSpacing.md),
-                itemBuilder: (context, i) {
-                  final event = events[i];
-                  return EventCardWidget(
-                    key: ValueKey(event.id),
-                    event: event,
-                    animationDelay: Duration(milliseconds: i * 30),
-                    onDelete: () {
-                      ref
-                          .read(calendarNotifierProvider.notifier)
-                          .deleteEvent(event.id);
-                    },
-                  );
-                },
-              );
-            },
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(
+            AppSpacing.lg, AppSpacing.md, AppSpacing.lg, AppSpacing.x4l,
           ),
-        ),
-      ],
+          itemCount: 1 + dayTasks.length + events.length + (hasContent ? 0 : 1),
+          itemBuilder: (context, index) {
+            // Header
+            if (index == 0) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+                child: Text(headerLabel, style: AppTypography.titleMedium(onBg)),
+              );
+            }
+            // Task items
+            if (index <= dayTasks.length) {
+              final task = dayTasks[index - 1];
+              return _TaskDeadlineTile(
+                task: task,
+                secondary: secondary,
+                onBg: onBg,
+                muted: muted,
+                isDark: isDark,
+              );
+            }
+            // Empty state (no tasks and no events)
+            if (!hasContent) {
+              return Center(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: AppSpacing.x3l),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.event_available_rounded, color: muted, size: 48)
+                          .animate()
+                          .scale(
+                            begin: const Offset(0.8, 0.8),
+                            end: const Offset(1, 1),
+                            duration: 350.ms,
+                            curve: Curves.elasticOut,
+                          ),
+                      const SizedBox(height: AppSpacing.md),
+                      Text('Nothing scheduled', style: AppTypography.titleMedium(onBg))
+                          .animate().fadeIn(duration: 250.ms, delay: 80.ms),
+                      const SizedBox(height: AppSpacing.sm),
+                      Text('Tap + to add an event for this day.',
+                              style: AppTypography.bodySmall(muted),
+                              textAlign: TextAlign.center)
+                          .animate().fadeIn(duration: 200.ms, delay: 160.ms),
+                      const SizedBox(height: AppSpacing.x3l),
+                      TextButton.icon(
+                        onPressed: onAddTap,
+                        icon: Icon(Icons.add_rounded, color: primary),
+                        label: Text('Add Event', style: AppTypography.labelLarge(primary)),
+                      ).animate().fadeIn(duration: 200.ms, delay: 240.ms),
+                    ],
+                  ),
+                ),
+              );
+            }
+            // Event items
+            final eventIndex = index - 1 - dayTasks.length;
+            final event = events[eventIndex];
+            return Padding(
+              padding: const EdgeInsets.only(bottom: AppSpacing.md),
+              child: EventCardWidget(
+                key: ValueKey(event.id),
+                event: event,
+                animationDelay: Duration(milliseconds: eventIndex * 30),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    fullscreenDialog: true,
+                    builder: (_) => CreateEventScreen(existingEvent: event),
+                  ),
+                ),
+                onDelete: () => ref
+                    .read(calendarNotifierProvider.notifier)
+                    .deleteEvent(event.id),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Task deadline tile — shown in the day list alongside calendar events
+// ---------------------------------------------------------------------------
+class _TaskDeadlineTile extends ConsumerWidget {
+  const _TaskDeadlineTile({
+    required this.task,
+    required this.secondary,
+    required this.onBg,
+    required this.muted,
+    required this.isDark,
+  });
+
+  final TaskModel task;
+  final Color secondary;
+  final Color onBg;
+  final Color muted;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final surface = isDark ? AppColors.darkSurface : AppColors.lightSurface;
+    final due = task.dueDate!;
+    final timeLabel = DateFormat('h:mm a').format(due);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: AppSpacing.sm),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.md,
+        vertical: AppSpacing.sm,
+      ),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        border: isDark ? Border.all(color: AppColors.darkSurfaceBright) : null,
+      ),
+      child: Row(
+        children: [
+          InkWell(
+            borderRadius: BorderRadius.circular(AppRadius.full),
+            onTap: () =>
+                ref.read(taskNotifierProvider.notifier).completeTask(task.id),
+            child: Icon(
+              task.isCompleted
+                  ? Icons.check_circle_rounded
+                  : Icons.radio_button_unchecked_rounded,
+              size: 20,
+              color: task.isCompleted ? secondary : muted,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          Expanded(
+            child: Text(
+              task.title,
+              style: AppTypography.bodyMedium(onBg).copyWith(
+                decoration: task.isCompleted ? TextDecoration.lineThrough : null,
+                color: task.isCompleted ? muted : onBg,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: AppSpacing.sm),
+          if (task.reminderMinutesBefore != null)
+            Icon(Icons.alarm_rounded, size: 14, color: muted),
+          const SizedBox(width: 2),
+          Text(timeLabel, style: AppTypography.bodySmall(muted)),
+        ],
+      ),
     );
   }
 }

@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:uuid/uuid.dart';
 
 import 'package:hybrid_tracker/core/database/local/app_database.dart';
+import 'package:hybrid_tracker/core/services/nim_config.dart';
 import 'package:hybrid_tracker/features/ai/data/models/ai_plan_item_model.dart';
 import 'package:hybrid_tracker/features/ai/data/models/ai_plan_model.dart';
 import 'package:hybrid_tracker/features/ai/data/models/coaching_insight_model.dart';
@@ -15,10 +16,7 @@ const _apiKeyPrefsKey = 'ryve_ai_api_key';
 
 /// Generates day plans and coaching insights.
 ///
-/// Prefers a real Claude API call when the user has configured an API key
-/// (Settings > AI); always falls back to a deterministic local heuristic
-/// generator built from the user's real tasks/habits/sleep/mood data so the
-/// feature works fully offline with zero network dependency.
+/// Priority: NVIDIA NIM (gpt-oss-120b) → NIM fallback (kimi-k3) → Claude → local heuristic.
 class AIService {
   AIService(this._db);
 
@@ -49,17 +47,43 @@ class AIService {
           ..where((h) => h.userId.equals(userId) & h.isActive.equals(true)))
         .get();
 
+    // 1. Try NVIDIA NIM (gpt-oss-120b ~35s)
+    try {
+      final nimPlan = await _callNim(
+        nimApiKeyPrimary,
+        nimModelPrimary,
+        userId,
+        date,
+        tasks,
+        habits,
+      ).timeout(const Duration(seconds: 60));
+      if (nimPlan != null) return (plan: nimPlan, usedAI: true);
+    } catch (_) {}
+
+    // 2. Try NIM fallback (kimi-k3 ~60s)
+    try {
+      final nimPlan = await _callNim(
+        nimApiKeyFallback,
+        nimModelFallback,
+        userId,
+        date,
+        tasks,
+        habits,
+      ).timeout(const Duration(seconds: 90));
+      if (nimPlan != null) return (plan: nimPlan, usedAI: true);
+    } catch (_) {}
+
+    // 3. Try Claude if key configured
     final apiKey = await getApiKey();
     if (apiKey != null && apiKey.isNotEmpty) {
       try {
         final aiPlan = await _callClaude(apiKey, userId, date, tasks, habits)
-            .timeout(const Duration(seconds: 12));
+            .timeout(const Duration(seconds: 30));
         if (aiPlan != null) return (plan: aiPlan, usedAI: true);
-      } catch (_) {
-        // fall through to local heuristic plan
-      }
+      } catch (_) {}
     }
 
+    // 4. Local heuristic
     return (plan: _buildHeuristicPlan(userId, date, tasks, habits), usedAI: false);
   }
 
@@ -130,6 +154,92 @@ class AIService {
       status: 'draft',
       promptContext: 'local_heuristic',
       modelUsed: null,
+      generatedAt: DateTime.now(),
+      createdAt: DateTime.now(),
+      items: items,
+    );
+  }
+
+  Future<AIPlanModel?> _callNim(
+    String apiKey,
+    String model,
+    String userId,
+    DateTime date,
+    List<Task> tasks,
+    List<Habit> habits,
+  ) async {
+    final dio = Dio(BaseOptions(
+      connectTimeout: const Duration(seconds: 15),
+      receiveTimeout: const Duration(seconds: 90),
+    ));
+
+    final taskList = tasks.map((t) => '- ${t.title} (priority ${t.priority})').join('\n');
+    final habitList = habits.map((h) => '- ${h.name}').join('\n');
+    final dateStr = date.toIso8601String().split('T').first;
+
+    final prompt = '''You are a personal productivity coach. Create a realistic day plan for $dateStr.
+
+Pending tasks (with priority):
+$taskList
+
+Habits due today:
+$habitList
+
+Return ONLY a JSON array, no prose, no markdown, no code fences:
+[{ "slot_start": "HH:MM", "slot_end": "HH:MM", "title": "...", "item_type": "task|habit|break|focus" }]''';
+
+    final response = await dio.post(
+      nimBaseUrl,
+      options: Options(headers: {
+        'Authorization': 'Bearer $apiKey',
+        'Accept': 'application/json',
+        'content-type': 'application/json',
+      }),
+      data: {
+        'model': model,
+        'max_tokens': 1024,
+        'temperature': 0.3,
+        'stream': false,
+        'messages': [
+          {'role': 'user', 'content': prompt},
+        ],
+        if (model == 'openai/gpt-oss-120b' || model == 'openai/gpt-oss-20b')
+          'chat_template_kwargs': {'thinking': false},
+      },
+    );
+
+    final choices = response.data['choices'] as List?;
+    if (choices == null || choices.isEmpty) return null;
+    final text = choices.first['message']?['content'] as String?;
+    if (text == null || text.isEmpty) return null;
+
+    final jsonStart = text.indexOf('[');
+    final jsonEnd = text.lastIndexOf(']');
+    if (jsonStart == -1 || jsonEnd == -1) return null;
+    final parsed = jsonDecode(text.substring(jsonStart, jsonEnd + 1)) as List;
+
+    final planId = _uuid.v4();
+    final items = <AIPlanItemModel>[];
+    for (var i = 0; i < parsed.length; i++) {
+      final row = parsed[i] as Map<String, dynamic>;
+      items.add(AIPlanItemModel(
+        id: _uuid.v4(),
+        planId: planId,
+        slotStart: row['slot_start'] as String? ?? '09:00',
+        slotEnd: row['slot_end'] as String? ?? '09:30',
+        title: row['title'] as String? ?? 'Untitled',
+        itemType: AIPlanItemTypeX.fromStorage(row['item_type'] as String? ?? 'task'),
+        sortOrder: i,
+      ));
+    }
+
+    return AIPlanModel(
+      id: planId,
+      userId: userId,
+      planDate: date,
+      status: 'draft',
+      promptContext: 'nvidia_nim',
+      modelUsed: model,
       generatedAt: DateTime.now(),
       createdAt: DateTime.now(),
       items: items,

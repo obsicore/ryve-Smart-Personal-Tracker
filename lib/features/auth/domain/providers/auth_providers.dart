@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:hybrid_tracker/core/services/sync_service.dart';
 import 'package:hybrid_tracker/main.dart' show databaseProvider;
 import 'package:hybrid_tracker/features/auth/data/models/app_user_model.dart';
 import 'package:hybrid_tracker/features/auth/data/repositories/auth_repository.dart';
@@ -20,6 +23,7 @@ final authStateProvider = Provider<AsyncValue<AppUser?>>(
 
 class AuthNotifier extends AsyncNotifier<AppUser?> {
   AuthRepository get _repo => ref.read(authRepositoryProvider);
+  SyncService get _sync => ref.read(syncServiceProvider);
 
   @override
   Future<AppUser?> build() => _repo.currentUser();
@@ -27,6 +31,11 @@ class AuthNotifier extends AsyncNotifier<AppUser?> {
   Future<void> signInWithEmail(String email, String password) async {
     state = const AsyncLoading();
     state = await AsyncValue.guard(() => _repo.signIn(email, password));
+    final uid = state.valueOrNull?.uid;
+    if (uid != null) {
+      // Restore all Neon data for this user silently after login.
+      _sync.pullAll(uid).ignore();
+    }
   }
 
   Future<void> signInWithGoogle() async {
@@ -38,10 +47,20 @@ class AuthNotifier extends AsyncNotifier<AppUser?> {
 
   Future<void> register(String email, String password, String displayName) async {
     state = const AsyncLoading();
-    state = await AsyncValue.guard(() => _repo.register(email, password, displayName));
+    state = await AsyncValue.guard(
+        () => _repo.register(email, password, displayName));
+    // New account — nothing to pull yet, but flush pushes the user row
+    // already handled in AuthRepository.register(). Pull is a no-op here.
   }
 
   Future<void> signOut() async {
+    // Flush any unsynced local data before wiping the session.
+    final uid = state.valueOrNull?.uid;
+    if (uid != null) {
+      await _sync.flush()
+          .timeout(const Duration(seconds: 6))
+          .onError((_, __) {});
+    }
     state = const AsyncLoading();
     state = await AsyncValue.guard(() async {
       await _repo.signOut();

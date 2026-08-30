@@ -24,6 +24,7 @@ class FocusTimerState {
   final bool isRunning;
   final bool isPaused;
   final int completedSessions;
+  final bool isCustom;
 
   const FocusTimerState({
     required this.sessionType,
@@ -32,6 +33,7 @@ class FocusTimerState {
     required this.isRunning,
     required this.isPaused,
     required this.completedSessions,
+    this.isCustom = false,
   });
 
   FocusTimerState copyWith({
@@ -41,6 +43,7 @@ class FocusTimerState {
     bool? isRunning,
     bool? isPaused,
     int? completedSessions,
+    bool? isCustom,
   }) =>
       FocusTimerState(
         sessionType: sessionType ?? this.sessionType,
@@ -49,6 +52,7 @@ class FocusTimerState {
         isRunning: isRunning ?? this.isRunning,
         isPaused: isPaused ?? this.isPaused,
         completedSessions: completedSessions ?? this.completedSessions,
+        isCustom: isCustom ?? this.isCustom,
       );
 
   double get progress =>
@@ -125,8 +129,9 @@ class FocusTimerNotifier extends _$FocusTimerNotifier {
 
   void start() {
     if (state.isRunning) return;
-    final settings = ref.read(focusSettingsProvider).valueOrNull;
-    final seconds = _secondsForType(state.sessionType, settings);
+    final seconds = state.isCustom
+        ? state.totalSeconds
+        : _secondsForType(state.sessionType, ref.read(focusSettingsProvider).valueOrNull);
     _sessionStart = DateTime.now();
     state = FocusTimerState(
       sessionType: state.sessionType,
@@ -135,6 +140,7 @@ class FocusTimerNotifier extends _$FocusTimerNotifier {
       isRunning: true,
       isPaused: false,
       completedSessions: state.completedSessions,
+      isCustom: state.isCustom,
     );
     _startTick();
   }
@@ -185,6 +191,7 @@ class FocusTimerNotifier extends _$FocusTimerNotifier {
       isRunning: false,
       isPaused: false,
       completedSessions: state.completedSessions,
+      isCustom: false,
     );
   }
 
@@ -263,6 +270,20 @@ class FocusTimerNotifier extends _$FocusTimerNotifier {
           );
     }
     _sessionStart = null;
+  }
+
+  void setCustomDuration(int minutes) {
+    if (state.isRunning) return;
+    final seconds = minutes * 60;
+    state = FocusTimerState(
+      sessionType: FocusSessionType.work,
+      totalSeconds: seconds,
+      remainingSeconds: seconds,
+      isRunning: false,
+      isPaused: false,
+      completedSessions: state.completedSessions,
+      isCustom: true,
+    );
   }
 
   int _secondsForType(FocusSessionType type, FocusSettingsModel? settings) {

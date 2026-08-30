@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 import 'package:hybrid_tracker/core/theme/app_colors.dart';
 import 'package:hybrid_tracker/core/theme/app_spacing.dart';
@@ -181,11 +182,32 @@ class _TaskCardState extends ConsumerState<TaskCard>
                               isCompleted: isCompleted,
                               onTap: () async {
                                 if (!isCompleted) {
+                                  final task = widget.task;
                                   await ref
                                       .read(taskNotifierProvider.notifier)
-                                      .completeTask(widget.task.id);
+                                      .completeTask(task.id);
                                   if (context.mounted) {
                                     XpFloatOverlay.show(context, 10);
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text('Task completed'),
+                                        duration: const Duration(seconds: 4),
+                                        action: SnackBarAction(
+                                          label: 'Undo',
+                                          onPressed: () async {
+                                            await ref
+                                                .read(taskNotifierProvider.notifier)
+                                                .updateTask(
+                                                  task.copyWith(
+                                                    isCompleted: false,
+                                                    completedAt: null,
+                                                    updatedAt: DateTime.now(),
+                                                  ),
+                                                );
+                                          },
+                                        ),
+                                      ),
+                                    );
                                   }
                                 }
                               },
@@ -238,6 +260,19 @@ class _TaskCardState extends ConsumerState<TaskCard>
                                     ),
                                   ],
                                 ],
+                              ),
+                            ),
+                            // Edit icon — absorbs tap so parent nav doesn't fire
+                            GestureDetector(
+                              behavior: HitTestBehavior.opaque,
+                              onTap: () => context.push('/tasks/${widget.task.id}'),
+                              child: Padding(
+                                padding: const EdgeInsets.only(left: AppSpacing.sm),
+                                child: Icon(
+                                  Icons.edit_outlined,
+                                  size: 18,
+                                  color: colorScheme.onSurface.withOpacity(0.35),
+                                ),
                               ),
                             ),
                           ],

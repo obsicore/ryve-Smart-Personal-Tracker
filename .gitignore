@@ -51,3 +51,4 @@ app.*.map.json
 
 # Secrets — never commit real DB credentials
 lib/core/database/remote/neon_config.dart
+lib/core/services/nim_config.dart

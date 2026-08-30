@@ -97,7 +97,10 @@ class SmartReminderSetupScreen extends ConsumerWidget {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (_) => _ReminderEditorSheet(existing: existing),
+      builder: (ctx) => Padding(
+        padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(ctx).bottom),
+        child: _ReminderEditorSheet(existing: existing),
+      ),
     );
   }
 }
@@ -220,15 +223,13 @@ class _ReminderEditorSheetState extends ConsumerState<_ReminderEditorSheet> {
     final habitsAsync = ref.watch(allHabitsProvider);
     final locTriggersAsync = ref.watch(locationTriggersProvider);
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: Container(
-        padding: const EdgeInsets.all(AppSpacing.xl),
-        decoration: BoxDecoration(
-          color: surface,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
-        ),
-        child: SingleChildScrollView(
+    return Container(
+      padding: const EdgeInsets.all(AppSpacing.xl),
+      decoration: BoxDecoration(
+        color: surface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(AppRadius.xl)),
+      ),
+      child: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -311,7 +312,6 @@ class _ReminderEditorSheetState extends ConsumerState<_ReminderEditorSheet> {
             ],
           ),
         ),
-      ),
     );
   }
 

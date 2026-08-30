@@ -666,29 +666,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           ),
           onTap: () => context.push(Routes.appearance),
         ),
-        Consumer(builder: (context, ref, _) {
-          final pinConfig = ref.watch(pinConfigProvider);
-          final isSet = pinConfig.valueOrNull?.pinHash != null;
-          return tile(
-            icon: Icons.lock_outline_rounded,
-            title: 'PIN Lock',
-            subtitle: isSet ? 'Configured · ${pinConfig.valueOrNull?.autoLockMinutes ?? 5} min auto-lock' : 'Not configured',
-            trailing: Switch(
-              value: isSet,
-              activeThumbColor: goldColor,
-              onChanged: (v) async {
-                if (v) {
-                  await showPinSetupSheet(context);
-                } else {
-                  final userId = ref.read(authStateProvider).value?.uid ?? '';
-                  await ref.read(pinRepositoryProvider).setPin(userId, '');
-                  ref.invalidate(pinConfigProvider);
-                }
-              },
-            ),
-            onTap: () => showPinSetupSheet(context),
-          );
-        }),
         tile(
           icon: Icons.people_outline,
           title: 'Accountability',
@@ -701,42 +678,6 @@ class _ProfileScreenState extends ConsumerState<ProfileScreen>
           subtitle: 'Join challenges with other Ryvers',
           onTap: () => context.push(Routes.communityChallenges),
         ),
-        tile(
-          icon: Icons.widgets_outlined,
-          title: 'Home Screen Widgets',
-          subtitle: 'Habit progress, focus & water widgets',
-          onTap: () => context.push(Routes.widgetConfig),
-        ),
-        tile(
-          icon: Icons.dashboard_customize_outlined,
-          title: 'Customize Dashboard',
-          subtitle: 'Reorder & toggle dashboard cards',
-          onTap: () => context.push(Routes.dashboardCustomize),
-        ),
-        Consumer(builder: (context, ref, _) {
-          final syncStatus = ref.watch(syncControllerProvider);
-          final syncing = syncStatus.phase == SyncPhase.syncing;
-          return tile(
-            icon: Icons.sync_rounded,
-            title: 'Sync Now',
-            subtitle: syncStatus.lastSyncedAt != null
-                ? 'Last synced: ${syncStatus.lastSyncedAt!.toLocal().toString().substring(0, 16)}'
-                : (syncStatus.phase == SyncPhase.error ? 'Sync failed — tap to retry' : 'Never synced'),
-            trailing: syncing
-                ? const SizedBox(
-                    width: 18,
-                    height: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(Icons.chevron_right_rounded, color: mutedColor, size: 20),
-            onTap: syncing
-                ? null
-                : () {
-                    final uid = ref.read(authStateProvider).valueOrNull?.uid ?? '';
-                    ref.read(syncControllerProvider.notifier).syncNow(uid);
-                  },
-          );
-        }),
         tile(
           icon: Icons.download_outlined,
           title: 'Export Data',

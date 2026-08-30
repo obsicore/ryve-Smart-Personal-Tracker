@@ -21,9 +21,12 @@ const _eventColors = [
 ];
 
 class CreateEventScreen extends ConsumerStatefulWidget {
-  const CreateEventScreen({super.key, this.initialDate});
+  const CreateEventScreen({super.key, this.initialDate, this.existingEvent});
 
   final DateTime? initialDate;
+  final CalendarEventModel? existingEvent;
+
+  bool get isEditing => existingEvent != null;
 
   @override
   ConsumerState<CreateEventScreen> createState() => _CreateEventScreenState();
@@ -43,9 +46,20 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
   @override
   void initState() {
     super.initState();
-    final base = widget.initialDate ?? DateTime.now();
-    _startDate = DateTime(base.year, base.month, base.day, 9, 0);
-    _endDate = DateTime(base.year, base.month, base.day, 10, 0);
+    final ev = widget.existingEvent;
+    if (ev != null) {
+      _titleController.text = ev.title;
+      _descriptionController.text = ev.description ?? '';
+      _locationController.text = ev.location ?? '';
+      _startDate = ev.startTime;
+      _endDate = ev.endTime;
+      _isAllDay = ev.isAllDay;
+      _selectedColor = ev.color;
+    } else {
+      final base = widget.initialDate ?? DateTime.now();
+      _startDate = DateTime(base.year, base.month, base.day, 9, 0);
+      _endDate = DateTime(base.year, base.month, base.day, 10, 0);
+    }
   }
 
   @override
@@ -140,8 +154,10 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
     if (user == null) return;
 
     final now = DateTime.now();
+    final existing = widget.existingEvent;
+
     final event = CalendarEventModel(
-      id: const Uuid().v4(),
+      id: existing?.id ?? const Uuid().v4(),
       userId: user.uid,
       title: _titleController.text.trim(),
       description: _descriptionController.text.trim().isEmpty
@@ -154,11 +170,15 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
       endTime: _endDate,
       isAllDay: _isAllDay,
       color: _selectedColor,
-      createdAt: now,
+      createdAt: existing?.createdAt ?? now,
       updatedAt: now,
     );
 
-    await ref.read(calendarNotifierProvider.notifier).createEvent(event);
+    if (existing != null) {
+      await ref.read(calendarNotifierProvider.notifier).updateEvent(event);
+    } else {
+      await ref.read(calendarNotifierProvider.notifier).createEvent(event);
+    }
 
     if (mounted) Navigator.of(context).pop();
   }
@@ -194,7 +214,7 @@ class _CreateEventScreenState extends ConsumerState<CreateEventScreen> {
           onPressed: () => Navigator.of(context).pop(),
         ),
         title: Text(
-          'New Event',
+          widget.isEditing ? 'Edit Event' : 'New Event',
           style: AppTypography.titleLarge(onBg),
         ),
         centerTitle: true,

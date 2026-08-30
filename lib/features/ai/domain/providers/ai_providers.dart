@@ -46,15 +46,48 @@ class AIPlannerNotifier extends _$AIPlannerNotifier {
   @override
   Future<AIPlanModel?> build() async {
     final userId = ref.watch(authStateProvider).valueOrNull?.uid ?? '';
-    return ref.watch(aiRepositoryProvider).getPlanForDate(userId, DateTime.now());
+    if (userId.isEmpty) return null;
+
+    // Load cached plan for today
+    final existing = await ref.read(aiRepositoryProvider).getPlanForDate(userId, DateTime.now());
+
+    // Auto-generate if: no plan yet, OR plan is from a previous day, OR plan is >3h old
+    final isStale = existing == null ||
+        !_isSameDay(existing.planDate, DateTime.now()) ||
+        DateTime.now().difference(existing.generatedAt).inHours >= 3;
+
+    if (isStale) {
+      final result = await ref.read(aiServiceProvider).generateDayPlan(userId, DateTime.now());
+      lastGenerationUsedAI = result.usedAI;
+      await ref.read(aiRepositoryProvider).savePlan(result.plan);
+      ref.invalidate(todayAIPlanProvider);
+      return result.plan;
+    }
+
+    // Check if any task was updated after plan was generated
+    final tasks = await (_db(ref).select(_db(ref).tasks)
+          ..where((t) => t.userId.equals(userId) & t.isCompleted.equals(false)))
+        .get();
+    tasksUpdatedAfterPlan = tasks.any(
+      (t) => t.updatedAt.isAfter(existing.generatedAt),
+    );
+
+    return existing;
   }
 
   bool lastGenerationUsedAI = true;
+  bool tasksUpdatedAfterPlan = false;
+
+  AppDatabase _db(Ref ref) => ref.read(databaseProvider);
+
+  bool _isSameDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
 
   Future<void> generate() async {
     final userId = ref.read(authStateProvider).valueOrNull?.uid ?? '';
     if (userId.isEmpty) return;
     state = const AsyncLoading();
+    tasksUpdatedAfterPlan = false;
     final result = await ref.read(aiServiceProvider).generateDayPlan(userId, DateTime.now());
     lastGenerationUsedAI = result.usedAI;
     await ref.read(aiRepositoryProvider).savePlan(result.plan);

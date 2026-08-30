@@ -43,6 +43,34 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
     super.dispose();
   }
 
+  void _showCustomTimerSheet(
+    BuildContext context,
+    FocusTimerNotifier notifier,
+    Color primary,
+    Color surface,
+    Color onBg,
+    Color muted,
+  ) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (_) => _CustomTimerSheet(
+        primaryColor: primary,
+        surfaceColor: surface,
+        onBg: onBg,
+        muted: muted,
+        onConfirm: (minutes) {
+          notifier.setCustomDuration(minutes);
+          Navigator.of(context).pop();
+        },
+      ),
+    );
+  }
+
   void _onNavTap(int index) {
     switch (index) {
       case 0:
@@ -130,6 +158,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
             // ----------------------------------------------------------------
             _SessionChips(
               current: timerState.sessionType,
+              isCustom: timerState.isCustom,
               enabled: !timerState.isRunning,
               primaryColor: primary,
               secondaryColor: secondary,
@@ -137,6 +166,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
               onSurface: onSurface,
               muted: muted,
               onSelect: notifier.switchType,
+              onCustomTap: () => _showCustomTimerSheet(context, notifier, primary, surface, onBg, muted),
             ),
 
             const SizedBox(height: AppSpacing.x3l),
@@ -243,6 +273,7 @@ class _FocusScreenState extends ConsumerState<FocusScreen>
 class _SessionChips extends StatelessWidget {
   const _SessionChips({
     required this.current,
+    required this.isCustom,
     required this.enabled,
     required this.primaryColor,
     required this.secondaryColor,
@@ -250,9 +281,11 @@ class _SessionChips extends StatelessWidget {
     required this.onSurface,
     required this.muted,
     required this.onSelect,
+    required this.onCustomTap,
   });
 
   final FocusSessionType current;
+  final bool isCustom;
   final bool enabled;
   final Color primaryColor;
   final Color secondaryColor;
@@ -260,22 +293,19 @@ class _SessionChips extends StatelessWidget {
   final Color onSurface;
   final Color muted;
   final ValueChanged<FocusSessionType> onSelect;
+  final VoidCallback onCustomTap;
 
   @override
   Widget build(BuildContext context) {
-    return Wrap(
-      alignment: WrapAlignment.center,
-      runSpacing: AppSpacing.xs,
-      children: FocusSessionType.values.map((type) {
-        final isSelected = current == type;
+    final chips = <Widget>[
+      ...FocusSessionType.values.map((type) {
+        final isSelected = !isCustom && current == type;
         final label = switch (type) {
           FocusSessionType.work => 'Work',
           FocusSessionType.shortBreak => 'Short Break',
           FocusSessionType.longBreak => 'Long Break',
         };
-        final chipColor = type == FocusSessionType.work
-            ? primaryColor
-            : secondaryColor;
+        final chipColor = type == FocusSessionType.work ? primaryColor : secondaryColor;
 
         return Padding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
@@ -289,25 +319,54 @@ class _SessionChips extends StatelessWidget {
                 vertical: AppSpacing.sm,
               ),
               decoration: BoxDecoration(
-                color: isSelected
-                    ? chipColor.withValues(alpha: 0.15)
-                    : Colors.transparent,
+                color: isSelected ? chipColor.withValues(alpha: 0.15) : Colors.transparent,
                 border: Border.all(
                   color: isSelected ? chipColor : muted.withValues(alpha: 0.4),
                   width: 1.5,
                 ),
                 borderRadius: BorderRadius.circular(AppRadius.xl),
               ),
-              child: Text(
-                label,
-                style: AppTypography.labelMedium(
-                  isSelected ? chipColor : muted,
-                ),
-              ),
+              child: Text(label, style: AppTypography.labelMedium(isSelected ? chipColor : muted)),
             ),
           ),
         );
-      }).toList(),
+      }),
+      // Custom chip
+      Padding(
+        padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xs),
+        child: GestureDetector(
+          onTap: enabled ? onCustomTap : null,
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.md,
+              vertical: AppSpacing.sm,
+            ),
+            decoration: BoxDecoration(
+              color: isCustom ? primaryColor.withValues(alpha: 0.15) : Colors.transparent,
+              border: Border.all(
+                color: isCustom ? primaryColor : muted.withValues(alpha: 0.4),
+                width: 1.5,
+              ),
+              borderRadius: BorderRadius.circular(AppRadius.xl),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.timer_outlined, size: 14, color: isCustom ? primaryColor : muted),
+                const SizedBox(width: 4),
+                Text('Custom', style: AppTypography.labelMedium(isCustom ? primaryColor : muted)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    ];
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      runSpacing: AppSpacing.xs,
+      children: chips,
     );
   }
 }
@@ -588,5 +647,179 @@ class _StatTile extends StatelessWidget {
         .animate()
         .fadeIn(duration: 350.ms)
         .slideY(begin: 0.06, end: 0, curve: Curves.easeOut);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Custom timer bottom sheet
+// ---------------------------------------------------------------------------
+
+class _CustomTimerSheet extends StatefulWidget {
+  const _CustomTimerSheet({
+    required this.primaryColor,
+    required this.surfaceColor,
+    required this.onBg,
+    required this.muted,
+    required this.onConfirm,
+  });
+
+  final Color primaryColor;
+  final Color surfaceColor;
+  final Color onBg;
+  final Color muted;
+  final ValueChanged<int> onConfirm;
+
+  @override
+  State<_CustomTimerSheet> createState() => _CustomTimerSheetState();
+}
+
+class _CustomTimerSheetState extends State<_CustomTimerSheet> {
+  int _minutes = 30;
+  final _controller = TextEditingController(text: '30');
+
+  static const _presets = [5, 10, 15, 20, 25, 30, 45, 60, 90];
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _setMinutes(int m) {
+    setState(() {
+      _minutes = m.clamp(1, 180);
+      _controller.text = _minutes.toString();
+      _controller.selection = TextSelection.collapsed(offset: _controller.text.length);
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(
+        left: AppSpacing.lg,
+        right: AppSpacing.lg,
+        top: AppSpacing.lg,
+        bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Handle
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: widget.muted.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+
+          Text('Custom Timer', style: AppTypography.titleMedium(widget.onBg)),
+          const SizedBox(height: AppSpacing.xs),
+          Text('Set your own focus duration', style: AppTypography.bodySmall(widget.muted)),
+
+          const SizedBox(height: AppSpacing.xl),
+
+          // Preset chips
+          Text('Quick presets', style: AppTypography.labelSmall(widget.muted)),
+          const SizedBox(height: AppSpacing.sm),
+          Wrap(
+            spacing: AppSpacing.sm,
+            runSpacing: AppSpacing.sm,
+            children: _presets.map((m) {
+              final sel = _minutes == m;
+              return GestureDetector(
+                onTap: () => _setMinutes(m),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.md, vertical: AppSpacing.sm),
+                  decoration: BoxDecoration(
+                    color: sel ? widget.primaryColor.withValues(alpha: 0.15) : Colors.transparent,
+                    border: Border.all(
+                      color: sel ? widget.primaryColor : widget.muted.withValues(alpha: 0.35),
+                      width: 1.5,
+                    ),
+                    borderRadius: BorderRadius.circular(AppRadius.xl),
+                  ),
+                  child: Text(
+                    '${m}m',
+                    style: AppTypography.labelMedium(sel ? widget.primaryColor : widget.muted),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+
+          const SizedBox(height: AppSpacing.xl),
+
+          // Manual input + stepper
+          Text('Or enter minutes (1–180)', style: AppTypography.labelSmall(widget.muted)),
+          const SizedBox(height: AppSpacing.sm),
+          Row(
+            children: [
+              IconButton(
+                onPressed: () => _setMinutes(_minutes - 5),
+                icon: Icon(Icons.remove_circle_outline_rounded, color: widget.primaryColor),
+              ),
+              Expanded(
+                child: TextField(
+                  controller: _controller,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: AppTypography.titleLarge(widget.onBg),
+                  decoration: InputDecoration(
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(AppRadius.sm)),
+                    suffixText: 'min',
+                  ),
+                  onChanged: (v) {
+                    final parsed = int.tryParse(v);
+                    if (parsed != null) setState(() => _minutes = parsed.clamp(1, 180));
+                  },
+                ),
+              ),
+              IconButton(
+                onPressed: () => _setMinutes(_minutes + 5),
+                icon: Icon(Icons.add_circle_outline_rounded, color: widget.primaryColor),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: AppSpacing.xl),
+
+          // Slider
+          Slider(
+            value: _minutes.toDouble(),
+            min: 1,
+            max: 180,
+            divisions: 179,
+            activeColor: widget.primaryColor,
+            inactiveColor: widget.primaryColor.withValues(alpha: 0.2),
+            label: '${_minutes}m',
+            onChanged: (v) => _setMinutes(v.round()),
+          ),
+
+          const SizedBox(height: AppSpacing.md),
+
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () => widget.onConfirm(_minutes),
+              style: FilledButton.styleFrom(
+                backgroundColor: widget.primaryColor,
+                foregroundColor: AppColors.darkOnPrimary,
+                padding: const EdgeInsets.symmetric(vertical: AppSpacing.md),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.xl)),
+              ),
+              child: Text('Start ${_minutes}m Focus', style: AppTypography.labelLarge(AppColors.darkOnPrimary)),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
